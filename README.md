@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# nexorapro.dev Commerce
 
-## Getting Started
+**Project 01/10 — Production-Grade Portfolio Series**
 
-First, run the development server:
+Premium electronics storefront and commerce management platform for small and large retailers. nexorapro.dev is designed to manage the full journey from supplier intake and inventory to multilingual publishing, orders, sales analytics, and the customer-facing store.
+
+> Current status: **UI foundation / portfolio development**. The interface uses realistic demo data; persistence, authentication, and payment processing are planned next.
+
+## Product vision
+
+nexorapro.dev serves electronics retailers that sell products such as smartphones, laptops, tablets, audio devices, and accessories. One platform connects:
+
+- A premium, Apple-inspired storefront with an original visual identity
+- Product catalog, variants, pricing, and storefront visibility
+- UZ/RU/EN product content and localization status
+- Supplier intake, warehouses, branches, and stock movements
+- Orders, payments, delivery, returns, and refunds
+- Sales, margin, category, and inventory analytics
+- Multi-store organizations, users, RBAC, and audit logs
+
+## Working routes
+
+| Route | Purpose | Status |
+| --- | --- | --- |
+| `/` | Premium storefront concept | UI complete |
+| `/admin` | Executive commerce dashboard | UI complete |
+| `/admin/products` | Search, filters, create draft, language status, visibility | Interactive demo |
+| `/admin/sales` | Product selection, cart, discount, payment method, stock deduction | Interactive demo |
+| `/admin/inventory` | Inventory module scope | Planned module screen |
+| `/admin/orders` | Order management scope | Planned module screen |
+| `/admin/analytics` | Extended analytics scope | Planned module screen |
+| `/admin/localization` | UZ/RU/EN workflow scope | Planned module screen |
+
+## Technology
+
+- Next.js 16 App Router
+- React 19 and TypeScript
+- Tailwind CSS 4
+- shadcn/ui foundation
+- TanStack Table
+- Recharts
+- Custom nexorapro.dev SVG icon system and Lucide interaction icons
+- Zod, React Hook Form (prepared for validated forms)
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) for the storefront and [http://localhost:3000/admin](http://localhost:3000/admin) for the admin panel.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quality checks
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+The current implementation has been checked at desktop and 375px mobile widths using a real browser. Keyboard focus, skip links, responsive tables/cards, reduced-motion preferences, and explicit form labels are included.
 
-To learn more about Next.js, take a look at the following resources:
+## Documentation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Development roadmap](docs/ROADMAP.md)
+- [Design system](docs/DESIGN_SYSTEM.md)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Current limitations
 
-## Deploy on Vercel
+- Product and sales data is shared across admin routes in client memory and resets after refresh.
+- Authentication and RBAC are not connected yet.
+- Storefront actions are visual only.
+- Product artwork is made with CSS placeholders; real product media will use an asset pipeline.
+- Analytics values are demo data and not financial records.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Definition of production-ready for this project
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The project will only be marked production-ready after database persistence, RBAC, validation, audit logs, security review, automated tests, observability, backups, deployment, and documented recovery procedures are implemented and verified.
+
+## License
+
+MIT
