@@ -1,0 +1,2 @@
+import { ModulePreview } from "@/components/admin/module-preview";
+export default function InventoryPage() { return <ModulePreview eyebrow="Supply chain" title="Ombor va kirim" description="Filiallar kesimida mahsulot qoldig‘i, kirim narxi, yetkazib beruvchi va harakat tarixini boshqarish moduli." ready={["SKU va variant bo‘yicha qoldiq", "Kam qoldiq ogohlantirishlari", "Kirim va chiqim harakati"]} next={["PostgreSQL inventory ledger", "Yetkazib beruvchilar bazasi", "Barcode orqali qabul qilish", "Filiallararo transfer"]} />; }

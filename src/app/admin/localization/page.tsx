@@ -1,0 +1,2 @@
+import { ModulePreview } from "@/components/admin/module-preview";
+export default function LocalizationPage() { return <ModulePreview eyebrow="UZ · RU · EN" title="Tarjimalar" description="Mahsulot nomi, tavsifi, SEO metadata va storefront interfeysini bir necha tilda boshqarish moduli." ready={["Mahsulot tili indikatori", "UZ/RU/EN strukturasi", "Tarjima completeness holati"]} next={["Locale-based routes", "Fallback language", "SEO hreflang metadata", "Tarjima workflow va review"]} />; }

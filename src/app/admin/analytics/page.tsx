@@ -1,0 +1,2 @@
+import { ModulePreview } from "@/components/admin/module-preview";
+export default function AnalyticsPage() { return <ModulePreview eyebrow="Business intelligence" title="Kengaytirilgan analitika" description="Sotuv, foyda, kategoriya, kanal va mahsulot samaradorligini taqqoslaydigan qaror qabul qilish paneli." ready={["Tushum dinamikasi", "Kategoriya ulushi", "Top mahsulotlar"]} next={["Gross profit va margin", "Conversion funnel", "Cohort va retention", "CSV/PDF eksport"]} />; }
