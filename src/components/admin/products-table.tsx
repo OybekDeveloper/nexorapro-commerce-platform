@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createColumnHelper, flexRender, getCoreRowModel, getFilteredRowModel, useReactTable } from "@tanstack/react-table";
-import { Check, ChevronDown, Eye, EyeOff, Filter, Languages, MoreHorizontal, Plus, Search, X } from "lucide-react";
+import { Check, ChevronDown, Eye, EyeOff, Filter, Languages, MoreHorizontal, Plus, Search, Video, X } from "lucide-react";
 
 import { useProductStore } from "@/components/admin/product-store";
 import type { Product, ProductCategory, ProductStatus } from "@/lib/types";
@@ -35,7 +35,7 @@ export function ProductsTable() {
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-xs font-bold text-brand">
             {row.original.name.slice(0, 2).toUpperCase()}
           </div>
-          <div><p className="font-semibold">{row.original.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{row.original.sku}</p></div>
+          <div><p className="font-semibold">{row.original.name}</p><div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground"><span>{row.original.sku}</span>{row.original.videoUrl && <span className="inline-flex items-center gap-1 text-brand"><Video className="size-3" />Video</span>}</div></div>
         </div>
       ),
     }),
@@ -144,6 +144,8 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
   const [costPrice, setCostPrice] = useState("");
   const [price, setPrice] = useState("");
   const [compareAtPrice, setCompareAtPrice] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoPosterUrl, setVideoPosterUrl] = useState("");
   const [stock, setStock] = useState("");
   const [status, setStatus] = useState<ProductStatus>("draft");
   const [visibleOnStorefront, setVisibleOnStorefront] = useState(false);
@@ -168,6 +170,8 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
             costPrice: Number(costPrice),
             price: Number(price),
             compareAtPrice: Number(compareAtPrice) || undefined,
+            videoUrl: videoUrl.trim() || undefined,
+            videoPosterUrl: videoPosterUrl.trim() || undefined,
             stock: Number(stock) || 0,
             status,
             visibleOnStorefront: status === "published" && visibleOnStorefront,
@@ -187,6 +191,14 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
               <label className="space-y-1.5 sm:col-span-2"><span className="text-sm font-medium">Mahsulot nomi <span className="text-brand">*</span></span><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="Masalan, iPhone 16 Pro" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">SKU <span className="text-brand">*</span></span><input required value={sku} onChange={(event) => setSku(event.target.value)} placeholder="APL-IP16P-256" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm uppercase outline-none placeholder:normal-case placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">Kategoriya</span><select value={category} onChange={(event) => setCategory(event.target.value as ProductCategory)} className="h-11 w-full cursor-pointer rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-muted/35 p-4">
+            <div className="mb-3 flex items-start gap-3"><span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand"><Video className="size-4" /></span><div><h3 className="text-sm font-semibold">Mahsulot videosi</h3><p className="mt-0.5 text-xs text-muted-foreground">MP4 video va poster URL kiriting. Video storefront’da viewport’ga kelgandagina yuklanadi.</p></div></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5"><span className="text-sm font-medium">Video URL</span><input type="url" value={videoUrl} onChange={(event) => setVideoUrl(event.target.value)} placeholder="https://cdn.example.com/product.mp4" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5"><span className="text-sm font-medium">Poster URL</span><input type="url" value={videoPosterUrl} onChange={(event) => setVideoPosterUrl(event.target.value)} placeholder="https://cdn.example.com/poster.jpg" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
             </div>
           </section>
 

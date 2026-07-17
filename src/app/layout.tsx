@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+
+import { StoreProvider } from "@/components/storefront/store-provider";
+import { StorefrontMotionShell } from "@/components/storefront/storefront-motion-shell";
+
 import "./globals.css";
 
 const geistSans = Geist({
@@ -45,7 +49,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="flex min-h-full flex-col">
-        {children}
+        <StoreProvider>
+          <StorefrontMotionShell>{children}</StorefrontMotionShell>
+        </StoreProvider>
       </body>
     </html>
   );

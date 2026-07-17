@@ -1,2 +1,5 @@
-import { ModulePreview } from "@/components/admin/module-preview";
-export default function OrdersPage() { return <ModulePreview eyebrow="Order management" title="Buyurtmalar" description="Onlayn va oflayn sotuvlarni yagona oqimda ko‘rish, status, to‘lov va yetkazib berishni boshqarish moduli." ready={["Buyurtma statuslari", "Mijoz va mahsulot tarkibi", "To‘lov holati"]} next={["Checkout va payment integration", "Courier tracking", "Return/refund flow", "Invoice va eksport"]} />; }
+import { OrdersWorkspace } from "@/components/admin/orders-workspace";
+
+export default function OrdersPage() {
+  return <div className="mx-auto max-w-[1600px] space-y-6"><div><p className="text-sm font-medium text-brand">Order management</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Buyurtmalar</h1><p className="mt-1 text-sm text-muted-foreground">Online va POS buyurtmalarini status, to‘lov va yetkazib berish bo‘yicha boshqaring.</p></div><OrdersWorkspace /></div>;
+}

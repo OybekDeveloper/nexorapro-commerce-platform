@@ -13,10 +13,10 @@ const stats: Array<{ label: string; value: string; suffix: string; trend: string
 ];
 
 const recentOrders = [
-  { id: "#NX-1048", customer: "Sardor Karimov", product: "iPhone 16 Pro", total: "16 999 000", status: "To‘landi" },
-  { id: "#NX-1047", customer: "Madina Islomova", product: "AirPods Pro", total: "3 199 000", status: "Yetkazilmoqda" },
-  { id: "#NX-1046", customer: "Azizbek Tursunov", product: "MacBook Air 13", total: "18 999 000", status: "Yangi" },
-  { id: "#NX-1045", customer: "Kamola Rahimova", product: "iPad Air 11", total: "10 499 000", status: "To‘landi" },
+  { id: "#NX-1062", customer: "Sardor Karimov", product: "iPhone 17 Pro", total: "20 999 000", status: "Yangi" },
+  { id: "#NX-1061", customer: "Madina Islomova", product: "AirPods Pro 3", total: "6 998 000", status: "To‘landi" },
+  { id: "#NX-1060", customer: "Azizbek Tursunov", product: "MacBook Air 13 M5", total: "17 999 000", status: "Tayyorlanmoqda" },
+  { id: "#NX-1059", customer: "Kamola Rahimova", product: "iPad Air 11 M4", total: "10 999 000", status: "Yetkazilmoqda" },
 ];
 
 export default function AdminDashboardPage() {

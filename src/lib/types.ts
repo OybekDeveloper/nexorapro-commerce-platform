@@ -9,6 +9,8 @@ export type Product = {
   costPrice: number;
   price: number;
   compareAtPrice?: number;
+  videoUrl?: string;
+  videoPosterUrl?: string;
   stock: number;
   status: ProductStatus;
   visibleOnStorefront: boolean;

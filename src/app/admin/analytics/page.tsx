@@ -1,2 +1,5 @@
-import { ModulePreview } from "@/components/admin/module-preview";
-export default function AnalyticsPage() { return <ModulePreview eyebrow="Business intelligence" title="Kengaytirilgan analitika" description="Sotuv, foyda, kategoriya, kanal va mahsulot samaradorligini taqqoslaydigan qaror qabul qilish paneli." ready={["Tushum dinamikasi", "Kategoriya ulushi", "Top mahsulotlar"]} next={["Gross profit va margin", "Conversion funnel", "Cohort va retention", "CSV/PDF eksport"]} />; }
+import { AnalyticsWorkspace } from "@/components/admin/analytics-workspace";
+
+export default function AnalyticsPage() {
+  return <div className="mx-auto max-w-[1600px] space-y-6"><div><p className="text-sm font-medium text-brand">Business intelligence</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Kengaytirilgan analitika</h1><p className="mt-1 text-sm text-muted-foreground">Sotuv, marja, kategoriya va conversion ko‘rsatkichlarini taqqoslang.</p></div><AnalyticsWorkspace /></div>;
+}

@@ -11,6 +11,8 @@ type ProductStoreValue = {
   products: Product[];
   addProduct: (product: Omit<Product, "id" | "sales">) => void;
   toggleVisibility: (id: string) => void;
+  restockProduct: (id: string, quantity: number) => void;
+  addProductLanguage: (id: string, language: "UZ" | "RU" | "EN") => void;
   recordSale: (lines: SaleLine[]) => void;
 };
 
@@ -27,6 +29,16 @@ export function ProductStoreProvider({ children }: { children: React.ReactNode }
     setProducts((current) => current.map((product) => product.id === id ? { ...product, visibleOnStorefront: !product.visibleOnStorefront } : product));
   };
 
+  const restockProduct = (id: string, quantity: number) => {
+    setProducts((current) => current.map((product) => product.id === id ? { ...product, stock: product.stock + Math.max(0, quantity) } : product));
+  };
+
+  const addProductLanguage = (id: string, language: "UZ" | "RU" | "EN") => {
+    setProducts((current) => current.map((product) => product.id === id && !product.languages.includes(language)
+      ? { ...product, languages: [...product.languages, language] }
+      : product));
+  };
+
   const recordSale = (lines: SaleLine[]) => {
     const quantities = new Map(lines.map((line) => [line.productId, line.quantity]));
     setProducts((current) => current.map((product) => {
@@ -37,7 +49,7 @@ export function ProductStoreProvider({ children }: { children: React.ReactNode }
     }));
   };
 
-  return <ProductStoreContext.Provider value={{ products, addProduct, toggleVisibility, recordSale }}>{children}</ProductStoreContext.Provider>;
+  return <ProductStoreContext.Provider value={{ products, addProduct, toggleVisibility, restockProduct, addProductLanguage, recordSale }}>{children}</ProductStoreContext.Provider>;
 }
 
 export function useProductStore() {

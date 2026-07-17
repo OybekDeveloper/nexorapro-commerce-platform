@@ -4,9 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Bell,
   ChevronRight,
+  ExternalLink,
+  LogOut,
   Menu,
   PanelLeftClose,
+  Settings,
   X,
 } from "lucide-react";
 
@@ -29,6 +33,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const sidebar = (
     <aside className={cn("flex h-full flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200", collapsed ? "w-[76px]" : "w-[260px]")}>
@@ -101,11 +107,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/" className="hidden h-9 cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:inline-flex">Storefront <ExternalLink className="size-3.5" /></Link>
             <ThemeToggle />
-            <button type="button" className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="flex size-6 items-center justify-center rounded-lg bg-brand text-[10px] font-bold text-white">OA</span>
-              <span className="hidden sm:inline">Oybek Aka</span>
-            </button>
+            <div className="relative"><button type="button" onClick={() => { setNotificationsOpen((value) => !value); setProfileOpen(false); }} className="relative inline-flex size-9 cursor-pointer items-center justify-center rounded-xl border border-border bg-background transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Bildirishnomalar" aria-expanded={notificationsOpen}><Bell className="size-4" /><span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-brand ring-2 ring-background" /></button>{notificationsOpen && <div className="absolute right-0 top-12 z-20 w-[min(86vw,340px)] overflow-hidden rounded-2xl border border-border bg-popover shadow-xl"><div className="border-b border-border p-4"><p className="font-semibold">Bildirishnomalar</p><p className="mt-1 text-xs text-muted-foreground">3 ta yangi operational signal</p></div><div className="divide-y divide-border">{[["Kam qoldiq", "MacBook Pro 14 — 3 dona qoldi"], ["Yangi buyurtma", "#NX-1062 checkout orqali yaratildi"], ["Tarjima", "2 ta mahsulotda EN kontent yetishmaydi"]].map(([title, text]) => <div key={title} className="p-4"><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{text}</p></div>)}</div></div>}</div>
+            <div className="relative"><button type="button" onClick={() => { setProfileOpen((value) => !value); setNotificationsOpen(false); }} className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-2.5 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-expanded={profileOpen}><span className="flex size-6 items-center justify-center rounded-lg bg-brand text-[10px] font-bold text-white">OA</span><span className="hidden sm:inline">Oybek Aka</span></button>{profileOpen && <div className="absolute right-0 top-12 z-20 w-56 rounded-2xl border border-border bg-popover p-2 shadow-xl"><div className="px-3 py-2"><p className="text-sm font-semibold">Oybek Aka</p><p className="mt-0.5 text-xs text-muted-foreground">Owner · nexorapro.dev</p></div><div className="my-1 h-px bg-border" /><button type="button" className="flex h-10 w-full cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-muted"><Settings className="size-4" />Sozlamalar</button><button type="button" className="flex h-10 w-full cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-medium text-red-600 hover:bg-red-500/10"><LogOut className="size-4" />Demo chiqish</button></div>}</div>
           </div>
         </header>
         <main id="admin-content" className="p-4 sm:p-6 lg:p-8">{children}</main>

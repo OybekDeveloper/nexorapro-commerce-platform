@@ -1,0 +1,112 @@
+"use client";
+
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+
+import { storefrontProducts, type StoreProduct } from "@/lib/storefront-data";
+import { CART_ADDED_EVENT, type CartAddedDetail } from "@/lib/storefront-motion";
+
+export type StoreLocale = "UZ" | "RU" | "EN";
+type CartItem = { productId: string; quantity: number };
+type CartLine = { product: StoreProduct; quantity: number };
+
+type StoreContextValue = {
+  locale: StoreLocale;
+  setLocale: (locale: StoreLocale) => void;
+  cartItems: CartItem[];
+  cartLines: CartLine[];
+  cartCount: number;
+  subtotal: number;
+  addToCart: (productId: string, quantity?: number) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
+  removeFromCart: (productId: string) => void;
+  clearCart: () => void;
+};
+
+const StoreContext = createContext<StoreContextValue | null>(null);
+const CART_KEY = "nexorapro-cart-v1";
+const LOCALE_KEY = "nexorapro-locale-v1";
+
+export function StoreProvider({ children }: { children: React.ReactNode }) {
+  const [locale, setLocaleState] = useState<StoreLocale>("UZ");
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const savedCart = window.localStorage.getItem(CART_KEY);
+        const savedLocale = window.localStorage.getItem(LOCALE_KEY) as StoreLocale | null;
+        if (savedCart) setCartItems(JSON.parse(savedCart) as CartItem[]);
+        if (savedLocale && ["UZ", "RU", "EN"].includes(savedLocale)) setLocaleState(savedLocale);
+      } catch {
+        window.localStorage.removeItem(CART_KEY);
+      } finally {
+        setHydrated(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) window.localStorage.setItem(CART_KEY, JSON.stringify(cartItems));
+  }, [cartItems, hydrated]);
+
+  const setLocale = (nextLocale: StoreLocale) => {
+    setLocaleState(nextLocale);
+    window.localStorage.setItem(LOCALE_KEY, nextLocale);
+  };
+
+  const addToCart = (productId: string, quantity = 1) => {
+    const product = storefrontProducts.find((item) => item.id === productId);
+    if (!product) return;
+    const safeQuantity = Math.min(product.stock, Math.max(1, quantity));
+    setCartItems((current) => {
+      const existing = current.find((item) => item.productId === productId);
+      if (!existing) return [...current, { productId, quantity: safeQuantity }];
+      return current.map((item) => item.productId === productId
+        ? { ...item, quantity: Math.min(product.stock, item.quantity + safeQuantity) }
+        : item);
+    });
+    window.dispatchEvent(new CustomEvent<CartAddedDetail>(CART_ADDED_EVENT, {
+      detail: { productId, quantity: safeQuantity },
+    }));
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    const product = storefrontProducts.find((item) => item.id === productId);
+    if (!product) return;
+    if (quantity <= 0) {
+      setCartItems((current) => current.filter((item) => item.productId !== productId));
+      return;
+    }
+    setCartItems((current) => current.map((item) => item.productId === productId
+      ? { ...item, quantity: Math.min(product.stock, quantity) }
+      : item));
+  };
+
+  const cartLines = useMemo(() => cartItems.flatMap((item) => {
+    const product = storefrontProducts.find((candidate) => candidate.id === item.productId);
+    return product ? [{ product, quantity: item.quantity }] : [];
+  }), [cartItems]);
+
+  const value = useMemo<StoreContextValue>(() => ({
+    locale,
+    setLocale,
+    cartItems,
+    cartLines,
+    cartCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    subtotal: cartLines.reduce((sum, line) => sum + line.product.price * line.quantity, 0),
+    addToCart,
+    updateQuantity,
+    removeFromCart: (productId) => setCartItems((current) => current.filter((item) => item.productId !== productId)),
+    clearCart: () => setCartItems([]),
+  }), [cartItems, cartLines, locale]);
+
+  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+}
+
+export function useStore() {
+  const value = useContext(StoreContext);
+  if (!value) throw new Error("useStore must be used inside StoreProvider");
+  return value;
+}

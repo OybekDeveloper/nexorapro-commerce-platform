@@ -1,18 +1,14 @@
 import type { Product } from "@/lib/types";
 
 export const products: Product[] = [
-  { id: "prd_001", name: "iPhone 16 Pro", sku: "APL-IP16P-256-TI", category: "Smartfon", costPrice: 14800000, price: 16999000, compareAtPrice: 17999000, stock: 24, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 138 },
-  { id: "prd_002", name: "MacBook Air 13", sku: "APL-MBA13-512-SL", category: "Noutbuk", costPrice: 16600000, price: 18999000, stock: 8, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 64 },
-  { id: "prd_003", name: "AirPods Pro", sku: "APL-APP-USB-C", category: "Audio", costPrice: 2450000, price: 3199000, stock: 41, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU"], sales: 211 },
-  { id: "prd_004", name: "iPad Air 11", sku: "APL-IPA11-256-BL", category: "Planshet", costPrice: 8900000, price: 10499000, stock: 5, status: "draft", visibleOnStorefront: false, languages: ["UZ"], sales: 19 },
-  { id: "prd_005", name: "Magic Keyboard", sku: "APL-MGK-US-WH", category: "Aksessuar", costPrice: 1400000, price: 1899000, stock: 0, status: "archived", visibleOnStorefront: false, languages: ["UZ", "RU", "EN"], sales: 47 },
-  { id: "prd_006", name: "MacBook Pro 14", sku: "APL-MBP14-1TB-BK", category: "Noutbuk", costPrice: 25800000, price: 28999000, stock: 3, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 32 },
-];
-
-export const featuredProducts = [
-  { id: "featured-1", name: "iPhone 16 Pro", category: "Smartfon", subtitle: "Titanium. Kuchli. Nafis.", price: "16 999 000 so‘mdan", art: "phone" as const, tone: "teal" as const },
-  { id: "featured-2", name: "MacBook Air", category: "Noutbuk", subtitle: "Yengil dizayn. Katta imkoniyat.", price: "18 999 000 so‘mdan", art: "laptop" as const, tone: "silver" as const },
-  { id: "featured-3", name: "AirPods Pro", category: "Audio", subtitle: "Ovozning yangi darajasi.", price: "3 199 000 so‘mdan", art: "audio" as const, tone: "silver" as const },
+  { id: "prd_001", name: "iPhone 17 Pro", sku: "APL-IP17P-256-OR", category: "Smartfon", costPrice: 18100000, price: 20999000, compareAtPrice: 21999000, videoUrl: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-forged-plateau/large_2x.mp4", videoPosterUrl: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-forged-plateau/posters/Apple-iPhone-17-Pro-forged-plateau-250909.jpg.large_2x.jpg", stock: 18, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 146 },
+  { id: "prd_002", name: "iPhone 17 Pro Max", sku: "APL-IP17PM-512-OR", category: "Smartfon", costPrice: 22800000, price: 26499000, stock: 7, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU"], sales: 79 },
+  { id: "prd_003", name: "MacBook Air 13 M5", sku: "APL-MBA13-M5-512-SB", category: "Noutbuk", costPrice: 15100000, price: 17999000, compareAtPrice: 18999000, stock: 12, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 68 },
+  { id: "prd_004", name: "MacBook Air 15 M5", sku: "APL-MBA15-M5-512-SB", category: "Noutbuk", costPrice: 18300000, price: 21499000, stock: 6, status: "published", visibleOnStorefront: true, languages: ["UZ", "EN"], sales: 41 },
+  { id: "prd_005", name: "iPad Air 11 M4", sku: "APL-IPA11-M4-256-BL", category: "Planshet", costPrice: 9100000, price: 10999000, stock: 9, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 36 },
+  { id: "prd_006", name: "iPad Air 13 M4", sku: "APL-IPA13-M4-256-BL", category: "Planshet", costPrice: 11600000, price: 13999000, stock: 4, status: "draft", visibleOnStorefront: false, languages: ["UZ"], sales: 17 },
+  { id: "prd_007", name: "AirPods Pro 3", sku: "APL-APP3-USB-C", category: "Audio", costPrice: 2750000, price: 3499000, compareAtPrice: 3799000, stock: 32, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU"], sales: 226 },
+  { id: "prd_008", name: "Magic Keyboard", sku: "APL-MGK-US-WH", category: "Aksessuar", costPrice: 1400000, price: 1899000, stock: 0, status: "archived", visibleOnStorefront: false, languages: ["UZ", "RU", "EN"], sales: 47 },
 ];
 
 export const salesData = [
