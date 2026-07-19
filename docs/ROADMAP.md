@@ -14,6 +14,10 @@
 
 ## Milestone 2 — Database, authentication, and RBAC
 
+- [x] Audit interactive MVP gaps and define shared API source of truth
+- [ ] Add validated REST API route handlers
+- [ ] Add persistent local development database and deterministic seed
+- [ ] Connect admin and storefront to shared repositories
 - [ ] Add PostgreSQL and migrations
 - [ ] Add organization, store, user, role, and permission models
 - [ ] Implement authentication and session handling

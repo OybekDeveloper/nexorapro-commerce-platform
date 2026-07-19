@@ -36,7 +36,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </nav>
           <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_430px]">
             <section>
-              <div data-shared-product-target={product.slug} className="relative aspect-[1.45/1] overflow-hidden rounded-[2rem] bg-white">
+              <div data-shared-product-target={product.slug} className="relative aspect-[1.55/1] overflow-hidden rounded-[2rem] bg-white">
                 <Image src={product.image} alt={product.imageAlt} fill fetchPriority="high" loading="eager" sizes="(max-width: 1024px) 100vw, 65vw" className="object-cover" />
                 {product.badge && <span className="absolute left-5 top-5 rounded-full bg-white/85 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-md">{product.badge}</span>}
               </div>

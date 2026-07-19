@@ -141,7 +141,8 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       borderRadius: transfer.borderRadius || "1.5rem",
       boxSizing: "border-box",
       zIndex: "90",
-      willChange: "transform,border-radius",
+      contain: "layout paint",
+      willChange: "transform,width,height,border-radius",
     });
     if (!existingOverlay) document.body.appendChild(overlay);
     failSafeTimer = window.setTimeout(finish, 1_000);
@@ -150,7 +151,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       if (cancelled) return;
       gsap.killTweensOf(overlay);
       Flip.fit(overlay, sharedTarget, {
-        scale: true,
+        scale: false,
         simple: true,
         duration: compact ? 0.42 : 0.5,
         ease: "power4.out",
