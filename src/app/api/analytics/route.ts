@@ -1,7 +1,14 @@
-import { getAnalytics } from "@/server/commerce-repository";
+import { requireApiUser } from "@/server/auth";
+import { getCachedAnalytics } from "@/server/cached-commerce";
+import { apiError } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  return Response.json({ analytics: getAnalytics() });
+export async function GET() {
+  try {
+    await requireApiUser("admin");
+    return Response.json({ analytics: await getCachedAnalytics() });
+  } catch (error) {
+    return apiError(error);
+  }
 }

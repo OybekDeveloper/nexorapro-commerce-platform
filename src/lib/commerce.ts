@@ -38,6 +38,7 @@ export type CommerceOrder = {
   subtotal: number;
   discount: number;
   total: number;
+  userId?: string;
   createdAt: string;
   items: CommerceOrderItem[];
 };

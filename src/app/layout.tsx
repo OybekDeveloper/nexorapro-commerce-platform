@@ -1,22 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { connection } from "next/server";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 
 import { StoreProvider } from "@/components/storefront/store-provider";
 import { StorefrontMotionShell } from "@/components/storefront/storefront-motion-shell";
-import { listProducts } from "@/server/commerce-repository";
+import { getOptionalUser } from "@/server/auth";
+import { getCachedStorefrontProducts } from "@/server/cached-commerce";
 
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -43,17 +34,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  await connection();
-  const products = listProducts({ storefrontOnly: true });
+  const [products, user] = await Promise.all([getCachedStorefrontProducts(), getOptionalUser()]);
   return (
     <html
       lang="uz"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="flex min-h-full flex-col">
-        <StoreProvider initialProducts={products}>
+        <StoreProvider initialProducts={products} initialUser={user}>
           <StorefrontMotionShell>{children}</StorefrontMotionShell>
         </StoreProvider>
       </body>

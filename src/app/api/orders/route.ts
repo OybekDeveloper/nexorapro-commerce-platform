@@ -1,20 +1,27 @@
-import { revalidatePath } from "next/cache";
-
 import { createOrderSchema } from "@/lib/commerce";
+import { requireApiUser } from "@/server/auth";
+import { invalidateOrders } from "@/server/cache-invalidation";
 import { createOrder, listOrders } from "@/server/commerce-repository";
-import { apiError } from "@/server/http";
+import { apiError, assertSameOrigin } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  return Response.json({ orders: listOrders() });
+export async function GET() {
+  try {
+    await requireApiUser("admin");
+    return Response.json({ orders: listOrders() });
+  } catch (error) {
+    return apiError(error);
+  }
 }
 
 export async function POST(request: Request) {
   try {
-    const order = createOrder(createOrderSchema.parse(await request.json()));
-    revalidatePath("/");
-    revalidatePath("/catalog");
+    assertSameOrigin(request);
+    const input = createOrderSchema.parse(await request.json());
+    const user = await requireApiUser(input.channel === "POS" ? "admin" : undefined);
+    const order = createOrder(input, user.id);
+    invalidateOrders();
     return Response.json({ order }, { status: 201 });
   } catch (error) {
     return apiError(error);

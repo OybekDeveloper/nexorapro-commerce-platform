@@ -12,10 +12,10 @@ import { ProductVideoShowcase } from "@/components/storefront/product-video-show
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { storeCategories } from "@/lib/storefront-data";
-import { listProducts } from "@/server/commerce-repository";
+import { getCachedStorefrontProducts } from "@/server/cached-commerce";
 
-export default function Home() {
-  const products = listProducts({ storefrontOnly: true });
+export default async function Home() {
+  const products = await getCachedStorefrontProducts();
   const videoProduct = products.find((product) => product.video);
 
   return (

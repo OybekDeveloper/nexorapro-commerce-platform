@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { storefrontProducts, type StoreProduct } from "@/lib/storefront-data";
+import type { AuthUser } from "@/lib/auth";
 import { CART_ADDED_EVENT, type CartAddedDetail } from "@/lib/storefront-motion";
 
 export type StoreLocale = "UZ" | "RU" | "EN";
@@ -10,6 +11,7 @@ type CartItem = { productId: string; quantity: number };
 type CartLine = { product: StoreProduct; quantity: number };
 
 type StoreContextValue = {
+  user: AuthUser | null;
   locale: StoreLocale;
   setLocale: (locale: StoreLocale) => void;
   products: StoreProduct[];
@@ -27,7 +29,7 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 const CART_KEY = "nexorapro-cart-v1";
 const LOCALE_KEY = "nexorapro-locale-v1";
 
-export function StoreProvider({ children, initialProducts = storefrontProducts }: { children: React.ReactNode; initialProducts?: StoreProduct[] }) {
+export function StoreProvider({ children, initialProducts = storefrontProducts, initialUser = null }: { children: React.ReactNode; initialProducts?: StoreProduct[]; initialUser?: AuthUser | null }) {
   const [locale, setLocaleState] = useState<StoreLocale>("UZ");
   const [products, setProducts] = useState<StoreProduct[]>(initialProducts);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -104,6 +106,7 @@ export function StoreProvider({ children, initialProducts = storefrontProducts }
   }), [cartItems, products]);
 
   const value = useMemo<StoreContextValue>(() => ({
+    user: initialUser,
     locale,
     setLocale,
     products,
@@ -115,7 +118,7 @@ export function StoreProvider({ children, initialProducts = storefrontProducts }
     updateQuantity,
     removeFromCart: (productId) => setCartItems((current) => current.filter((item) => item.productId !== productId)),
     clearCart: () => setCartItems([]),
-  }), [addToCart, cartItems, cartLines, locale, products, updateQuantity]);
+  }), [addToCart, cartItems, cartLines, initialUser, locale, products, updateQuantity]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

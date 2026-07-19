@@ -19,7 +19,7 @@ const copy = {
 export function StoreHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const { locale, setLocale, cartCount, products } = useStore();
+  const { locale, setLocale, cartCount, products, user } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
   const [localeOpen, setLocaleOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -168,6 +168,9 @@ export function StoreHeader() {
               <ShoppingBag className="size-[18px]" />
               {cartCount > 0 && <span data-cart-count className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-5 text-white">{cartCount > 99 ? "99+" : cartCount}</span>}
             </Link>
+            <Link href={user ? "/account" : "/login"} className="hidden size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:inline-flex" aria-label={user ? `${user.name} akkaunti` : "Kirish"}>
+              <UserRound className="size-[18px]" />
+            </Link>
             <button type="button" onClick={() => setMenuOpen(true)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden" aria-label={labels.menu}>
               <Menu className="size-5" />
             </button>
@@ -201,7 +204,7 @@ export function StoreHeader() {
           <aside ref={menuPanelRef} className="absolute right-0 top-0 flex h-full w-[min(88vw,360px)] flex-col bg-white p-5 shadow-2xl" aria-label="Mobil menyu">
             <div className="flex items-center justify-between"><span className="font-semibold">{labels.menu}</span><button type="button" onClick={() => setMenuOpen(false)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100" aria-label="Menyuni yopish"><X className="size-5" /></button></div>
             <nav className="mt-8 space-y-2">{navItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="flex h-14 cursor-pointer items-center justify-between rounded-2xl border border-black/5 px-4 text-lg font-semibold transition-colors hover:bg-zinc-100">{item.label}<ArrowRight className="size-4 text-brand" /></Link>)}</nav>
-            <div className="mt-auto space-y-2 border-t border-black/10 pt-5"><Link href="/cart" className="flex h-12 cursor-pointer items-center justify-between rounded-xl bg-brand px-4 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><ShoppingBag className="size-4" />Savat</span><span>{cartCount}</span></Link><Link href="/admin" className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-semibold"><UserRound className="size-4" />Admin panel</Link></div>
+            <div className="mt-auto space-y-2 border-t border-black/10 pt-5"><Link href="/cart" className="flex h-12 cursor-pointer items-center justify-between rounded-xl bg-brand px-4 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><ShoppingBag className="size-4" />Savat</span><span>{cartCount}</span></Link><Link href={user ? "/account" : "/login"} className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-semibold"><UserRound className="size-4" />{user ? user.name : "Email orqali kirish"}</Link><Link href="/admin" className="flex h-12 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold text-zinc-600"><UserRound className="size-4" />Admin panel</Link></div>
           </aside>
         </div>
       )}

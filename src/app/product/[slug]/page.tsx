@@ -9,19 +9,19 @@ import { ProductVideoShowcase } from "@/components/storefront/product-video-show
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 import { storefrontProducts } from "@/lib/storefront-data";
-import { getProduct } from "@/server/commerce-repository";
+import { getCachedStorefrontProduct } from "@/server/cached-commerce";
 
 export function generateStaticParams() { return storefrontProducts.map((product) => ({ slug: product.slug })); }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getCachedStorefrontProduct(slug);
   return product ? { title: product.name, description: product.description } : { title: "Mahsulot topilmadi" };
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = getProduct(slug);
+  const product = await getCachedStorefrontProduct(slug);
   if (!product || !product.visibleOnStorefront || product.status !== "published") notFound();
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">

@@ -49,7 +49,7 @@ type ProductRow = {
   updated_at: string;
 };
 
-type OrderRow = Omit<CommerceOrder, "items" | "createdAt"> & { created_at: string };
+type OrderRow = Omit<CommerceOrder, "items" | "createdAt" | "userId"> & { created_at: string; user_id: string | null };
 
 function parseStringArray(value: string) {
   try {
@@ -106,8 +106,25 @@ function getOrderItems(orderId: string): CommerceOrderItem[] {
   `).all(orderId) as CommerceOrderItem[];
 }
 
-function mapOrder(row: OrderRow): CommerceOrder {
-  return { ...row, createdAt: row.created_at, items: getOrderItems(row.id) };
+function mapOrder(row: OrderRow, items = getOrderItems(row.id)): CommerceOrder {
+  const { created_at, user_id, ...order } = row;
+  return { ...order, userId: user_id ?? undefined, createdAt: created_at, items };
+}
+
+function mapOrders(rows: OrderRow[]) {
+  if (rows.length === 0) return [];
+  const placeholders = rows.map(() => "?").join(",");
+  const items = database.prepare(`
+    SELECT order_id AS orderId, product_id AS productId, product_name AS productName, sku, price, quantity
+    FROM order_items WHERE order_id IN (${placeholders}) ORDER BY id
+  `).all(...rows.map((row) => row.id)) as Array<CommerceOrderItem & { orderId: string }>;
+  const byOrder = new Map<string, CommerceOrderItem[]>();
+  for (const { orderId, ...item } of items) {
+    const group = byOrder.get(orderId) ?? [];
+    group.push(item);
+    byOrder.set(orderId, group);
+  }
+  return rows.map((row) => mapOrder(row, byOrder.get(row.id) ?? []));
 }
 
 export function listProducts(options: { storefrontOnly?: boolean } = {}) {
@@ -192,15 +209,21 @@ export function archiveProduct(id: string) {
 }
 
 export function listOrders() {
-  return (database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, created_at FROM orders ORDER BY datetime(created_at) DESC, sequence DESC").all() as OrderRow[]).map(mapOrder);
+  const rows = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders ORDER BY datetime(created_at) DESC, sequence DESC").all() as OrderRow[];
+  return mapOrders(rows);
+}
+
+export function listOrdersByUser(userId: string) {
+  const rows = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE user_id = ? ORDER BY datetime(created_at) DESC, sequence DESC").all(userId) as OrderRow[];
+  return mapOrders(rows);
 }
 
 export function getOrder(id: string) {
-  const row = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, created_at FROM orders WHERE id = ?").get(id) as OrderRow | undefined;
+  const row = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE id = ?").get(id) as OrderRow | undefined;
   return row ? mapOrder(row) : null;
 }
 
-export function createOrder(input: CreateOrderInput) {
+export function createOrder(input: CreateOrderInput, userId?: string) {
   return database.transaction(() => {
     const requested = new Map<string, number>();
     for (const item of input.items) requested.set(item.productId, (requested.get(item.productId) ?? 0) + item.quantity);
@@ -216,9 +239,9 @@ export function createOrder(input: CreateOrderInput) {
     const latest = database.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 5) AS INTEGER)), 1000) AS value FROM orders").get() as { value: number };
     const id = `#NX-${latest.value + 1}`;
     database.prepare(`
-      INSERT INTO orders (id, customer, phone, address, channel, payment, status, subtotal, discount, total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, input.customer || "Mehmon mijoz", input.phone, input.address, input.channel, input.payment, input.channel === "POS" ? "paid" : "new", subtotal, discount, total);
+      INSERT INTO orders (id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, input.customer || "Mehmon mijoz", input.phone, input.address, input.channel, input.payment, input.channel === "POS" ? "paid" : "new", subtotal, discount, total, userId ?? null);
     const insertItem = database.prepare("INSERT INTO order_items (order_id, product_id, product_name, sku, price, quantity) VALUES (?, ?, ?, ?, ?, ?)");
     const updateStock = database.prepare("UPDATE products SET stock = stock - ?, sales = sales + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND stock >= ?");
     const movement = database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, note) VALUES (?, 'sale', ?, ?)");

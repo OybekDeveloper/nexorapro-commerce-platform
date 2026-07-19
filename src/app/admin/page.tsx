@@ -3,14 +3,17 @@ import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-
 
 import { CategoryChart, RevenueChart } from "@/components/admin/sales-chart";
 import { NexoraIcon, type NexoraIconName } from "@/components/icons/nexora-icons";
-import { getAnalytics, listProducts } from "@/server/commerce-repository";
+import { listProducts } from "@/server/commerce-repository";
+import { getCachedAnalytics } from "@/server/cached-commerce";
+import { requirePageUser } from "@/server/auth";
 
 const formatMoney = (value: number) => Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 const statusLabels = { new: "Yangi", paid: "To‘landi", packing: "Tayyorlanmoqda", shipping: "Yetkazilmoqda", completed: "Yakunlandi", cancelled: "Bekor qilindi" };
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const user = await requirePageUser("admin", "/admin-login");
   const products = listProducts();
-  const analytics = getAnalytics();
+  const analytics = await getCachedAnalytics();
   const lowStock = products.filter((product) => product.stock <= 5);
   const averageOrder = analytics.orderCount ? analytics.revenue / analytics.orderCount : 0;
   const stats: Array<{ label: string; value: string; suffix: string; trend: string; positive: boolean; icon: NexoraIconName }> = [
@@ -32,7 +35,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-brand">{new Intl.DateTimeFormat("uz-UZ", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Xayrli kun, Oybek Aka</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Xayrli kun, {user.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">Do‘koningizning bugungi holati va asosiy ko‘rsatkichlari.</p>
         </div>
         <Link href="/admin/products" className="inline-flex h-10 cursor-pointer items-center justify-center gap-2 self-start rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(16,161,132,0.18)] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">

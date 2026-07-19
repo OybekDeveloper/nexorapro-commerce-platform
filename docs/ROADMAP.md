@@ -25,7 +25,7 @@
 
 - [ ] Add PostgreSQL and migrations
 - [ ] Add organization, store, user, role, and permission models
-- [ ] Implement authentication and session handling
+- [x] Implement authentication and database session handling
 - [ ] Protect admin routes and server actions
 - [ ] Add audit logs and seed accounts
 

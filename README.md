@@ -4,7 +4,7 @@
 
 Premium electronics storefront and commerce management platform for small and large retailers. nexorapro.dev is designed to manage the full journey from supplier intake and inventory to multilingual publishing, orders, sales analytics, and the customer-facing store.
 
-> Current status: **API-backed portfolio MVP complete**. Products, inventory, POS, checkout, orders, dashboard totals, localization completeness, and CSV export share a persistent SQLite source of truth. Authentication, real payments, cloud media storage, and production hardening remain separate production milestones.
+> Current status: **secured full-stack portfolio MVP complete**. Storefront and admin share one persistent SQLite source of truth, database sessions protect role-based workflows, and tagged cache invalidation keeps published commerce data current.
 
 ## Product vision
 
@@ -26,6 +26,8 @@ nexorapro.dev serves electronics retailers that sell products such as smartphone
 | `/catalog` | Search, categories, filters and published product listing | Database-backed |
 | `/product/[slug]` | Product details, shared-image transition and purchase controls | Database-backed |
 | `/cart` | Persistent browser cart, promo and checkout order creation | API-backed |
+| `/login`, `/account` | Email registration/login and private customer order history | Session-protected |
+| `/admin-login` | Separate administrator login | Session-protected |
 | `/admin` | Executive commerce dashboard | Computed from database |
 | `/admin/products` | Create, publish visibility, localization and archive lifecycle | API-backed |
 | `/admin/sales` | POS cart, discount, payment, order and atomic stock deduction | API-backed |
@@ -45,6 +47,10 @@ The isolated client state has been replaced with one shared commerce source of t
 - Transactional POS/storefront order creation with server-side price and stock validation
 - Live admin order status workflow, computed dashboard/analytics API and CSV export
 - Dynamic storefront publishing: admin visibility changes affect catalog and product routes
+- Email/password authentication with bcrypt hashes, opaque database sessions, HttpOnly cookies and login lockout
+- Admin RBAC enforced inside every private Route Handler, not only in the UI
+- Tagged public product cache with 5-minute TTL and immediate mutation-driven tag/path revalidation
+- Batched order-item loading to avoid N+1 database queries
 - API integration verification plus desktop and 375px real-browser checks
 
 ## REST API
@@ -52,6 +58,9 @@ The isolated client state has been replaced with one shared commerce source of t
 | Endpoint | Methods | Purpose |
 | --- | --- | --- |
 | `/api/health` | `GET` | Service and database health |
+| `/api/auth/register`, `/api/auth/login` | `POST` | Customer account and session creation |
+| `/api/auth/admin/login` | `POST` | Admin-only session creation |
+| `/api/auth/me`, `/api/auth/logout` | `GET`, `POST` | Current session and revocation |
 | `/api/products` | `GET`, `POST` | Admin/storefront catalog and product creation |
 | `/api/products/[id]` | `GET`, `PATCH`, `DELETE` | Product update and safe archive |
 | `/api/orders` | `GET`, `POST` | Online and POS order workflow |
@@ -70,6 +79,7 @@ The isolated client state has been replaced with one shared commerce source of t
 - Recharts
 - GSAP Flip shared-element transitions
 - better-sqlite3 persistent local database
+- Self-hosted Geist Sans and Mono fonts (no Google Fonts build dependency)
 - Custom nexorapro.dev SVG icon system and Lucide interaction icons
 - Zod, React Hook Form (prepared for validated forms)
 
@@ -82,7 +92,19 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) for the storefront and [http://localhost:3000/admin](http://localhost:3000/admin) for the admin panel.
 
-The database is created automatically at `data/nexora.db`. Override it with `NEXORAPRO_DB_PATH` when an isolated database is needed.
+The database is created automatically at `data/nexora.db`. Override it with `NEXORAPRO_DB_PATH` when an isolated database is needed. Development seeds `admin@nexorapro.dev` / `NexoraAdmin2026!`; production does not use that fallback and requires `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` from the environment.
+
+Production must be served over HTTPS (for example, Nginx/Caddy in front of `next start`) because session cookies intentionally use the `Secure` flag outside development.
+
+## Cache and revalidation
+
+| Data | Strategy | Freshness |
+| --- | --- | --- |
+| Published storefront products | Next.js Data Cache, tag `commerce:products` | 5-minute fallback TTL; product/inventory/order mutations expire immediately |
+| Analytics summary | Tagged Data Cache | 60-second fallback TTL; order/product/inventory mutations expire immediately |
+| Session, customer orders, admin lists | Uncached/private reads | Per request |
+
+Mutations combine `revalidateTag(..., { expire: 0 })` with storefront/admin `revalidatePath` calls. This invalidates the data and page/router layers together.
 
 ## Quality checks
 
@@ -101,13 +123,12 @@ The current implementation has been checked at desktop and 375px mobile widths u
 
 ## Current production limitations
 
-- Authentication and RBAC are not connected yet.
 - Product media uses local optimized assets and official external demo video URLs; upload storage is not connected yet.
 - Checkout creates a real local order, but no external payment is captured in portfolio mode.
 - SQLite is intended for the local/single-instance portfolio deployment; multi-instance production requires PostgreSQL and migrations.
 - Localization currently persists locale completeness, not separate translated product copy.
 - Conversion funnel and chart time-series remain illustrative; dashboard totals, product sales, order counts, stock, and CSV are database-derived.
-- Supplier purchasing, transfers, refunds, audit logs, automated auth/security tests, and external delivery integrations are not implemented yet.
+- Supplier purchasing, transfers, refunds, full audit logs, password reset/email verification, and external delivery integrations are not implemented yet.
 
 ## Definition of production-ready for this project
 

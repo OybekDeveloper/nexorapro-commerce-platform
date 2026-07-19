@@ -2,8 +2,10 @@ import "server-only";
 
 import fs from "node:fs";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 import Database from "better-sqlite3";
+import { hashSync } from "bcryptjs";
 
 import { products as adminSeedProducts } from "@/lib/mock-data";
 import { storefrontProducts } from "@/lib/storefront-data";
@@ -17,6 +19,32 @@ database.pragma("foreign_keys = ON");
 database.pragma("busy_timeout = 5000");
 
 database.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('admin', 'customer')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sessions (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    user_agent TEXT,
+    ip_address TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS login_attempts (
+    email TEXT PRIMARY KEY COLLATE NOCASE,
+    failures INTEGER NOT NULL DEFAULT 0,
+    locked_until TEXT,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS products (
     id TEXT PRIMARY KEY,
     slug TEXT NOT NULL UNIQUE,
@@ -61,6 +89,7 @@ database.exec(`
     subtotal INTEGER NOT NULL,
     discount INTEGER NOT NULL DEFAULT 0,
     total INTEGER NOT NULL,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -85,6 +114,8 @@ database.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_products_storefront ON products(visible_on_storefront, status);
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
   CREATE INDEX IF NOT EXISTS idx_movements_created ON inventory_movements(created_at DESC);
 `);
@@ -93,6 +124,25 @@ const orderColumns = database.pragma("table_info(orders)") as Array<{ name: stri
 if (!orderColumns.some((column) => column.name === "address")) {
   database.exec("ALTER TABLE orders ADD COLUMN address TEXT NOT NULL DEFAULT ''");
 }
+if (!orderColumns.some((column) => column.name === "user_id")) {
+  database.exec("ALTER TABLE orders ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+}
+database.exec("CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, created_at DESC)");
+
+const seedAdmin = () => {
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase()
+    ?? (process.env.NODE_ENV === "development" ? "admin@nexorapro.dev" : "");
+  const password = process.env.ADMIN_PASSWORD
+    ?? (process.env.NODE_ENV === "development" ? "NexoraAdmin2026!" : "");
+  const name = process.env.ADMIN_NAME?.trim() || "Oybek Aka";
+  if (!email || !password) return;
+  const existing = database.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  if (existing) return;
+  database.prepare(`
+    INSERT INTO users (id, name, email, password_hash, role)
+    VALUES (?, ?, ?, ?, 'admin')
+  `).run(`usr_${randomUUID().slice(0, 12)}`, name, email, hashSync(password, 12));
+};
 
 const seedProducts = database.transaction(() => {
   const count = database.prepare("SELECT COUNT(*) AS count FROM products").get() as { count: number };
@@ -167,6 +217,7 @@ const seedOrders = database.transaction(() => {
   }
 });
 
+seedAdmin();
 seedProducts();
 seedOrders();
 

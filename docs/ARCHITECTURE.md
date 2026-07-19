@@ -5,12 +5,20 @@
 ```text
 Customer storefront ─┐
                      ├── Next.js 16 application ── repositories ── SQLite (current)
-Admin workspace ─────┘             │
-                                   ├── Route Handler REST API + Zod
-                                   └── PostgreSQL / auth / external providers (production target)
+Admin workspace ─────┘             │                         ├── users + bcrypt hashes
+                                   ├── Route Handler API     └── opaque database sessions
+                                   └── tagged Data Cache + tag/path revalidation
 ```
 
-The storefront and admin workspace share product, pricing, inventory, localization, and order domains. Presentation code remains separate so the customer experience can be optimized independently from data-heavy admin workflows.
+The storefront and admin workspace share product, pricing, inventory, localization, and order domains. Presentation code remains separate so the customer experience can be optimized independently from data-heavy admin workflows. Admin authorization is repeated at the Route Handler/data boundary; layout redirects are only a user-experience gate.
+
+## Authentication and cache boundaries
+
+- Passwords are bcrypt-hashed; raw passwords and session tokens are never stored.
+- The browser receives an opaque 256-bit token in an HttpOnly, SameSite=Lax cookie; SQLite stores only its SHA-256 hash.
+- Customer, admin and public roles are enforced for each API operation. Mutation requests with an `Origin` header must match the application origin.
+- Public product reads use tagged Data Cache entries. Product, order and inventory mutations immediately expire affected tags and revalidate storefront/admin paths.
+- Session and customer-specific data are never placed in the shared Data Cache.
 
 ## Core domains
 
