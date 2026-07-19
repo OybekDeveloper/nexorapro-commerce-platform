@@ -4,7 +4,7 @@
 
 Premium electronics storefront and commerce management platform for small and large retailers. nexorapro.dev is designed to manage the full journey from supplier intake and inventory to multilingual publishing, orders, sales analytics, and the customer-facing store.
 
-> Current status: **Interactive MVP complete; API-backed commerce phase in progress**. The storefront and admin workflows run with realistic demo data. Persistent API, shared domain data, authentication, and production hardening are the active next phase.
+> Current status: **API-backed portfolio MVP complete**. Products, inventory, POS, checkout, orders, dashboard totals, localization completeness, and CSV export share a persistent SQLite source of truth. Authentication, real payments, cloud media storage, and production hardening remain separate production milestones.
 
 ## Product vision
 
@@ -22,29 +22,43 @@ nexorapro.dev serves electronics retailers that sell products such as smartphone
 
 | Route | Purpose | Status |
 | --- | --- | --- |
-| `/` | Premium storefront, product discovery, motion and video showcase | Interactive demo |
-| `/catalog` | Search, categories, filters and product listing | Interactive demo |
-| `/product/[slug]` | Product details, shared-image transition and purchase controls | Interactive demo |
-| `/cart` | Persistent browser cart, promo and checkout preview | Interactive demo |
-| `/admin` | Executive commerce dashboard | Interactive demo |
-| `/admin/products` | Search, filters, create draft, language status, visibility | Interactive demo |
-| `/admin/sales` | Product selection, cart, discount, payment method, stock deduction | Interactive demo |
-| `/admin/inventory` | Search, stock receipt and movement history | Interactive demo |
-| `/admin/orders` | Search, status workflow and order detail panel | Interactive demo |
-| `/admin/analytics` | Revenue, category, product and funnel analytics | Demo analytics |
-| `/admin/localization` | UZ/RU/EN completeness workflow | Interactive demo |
+| `/` | Premium storefront, product discovery, motion and video showcase | Database-backed |
+| `/catalog` | Search, categories, filters and published product listing | Database-backed |
+| `/product/[slug]` | Product details, shared-image transition and purchase controls | Database-backed |
+| `/cart` | Persistent browser cart, promo and checkout order creation | API-backed |
+| `/admin` | Executive commerce dashboard | Computed from database |
+| `/admin/products` | Create, publish visibility, localization and archive lifecycle | API-backed |
+| `/admin/sales` | POS cart, discount, payment, order and atomic stock deduction | API-backed |
+| `/admin/inventory` | Stock receipt and inventory movement ledger | API-backed |
+| `/admin/orders` | Online/POS orders, search, details and status workflow | API-backed |
+| `/admin/analytics` | Product metrics and working order CSV export | Mixed live/demo analytics |
+| `/admin/localization` | Persistent UZ/RU/EN completeness workflow | API-backed |
 
-## Active full-stack phase
+## Implemented full-stack foundation
 
-The next implementation phase has started and will replace isolated client mock state with one shared API-backed commerce source of truth:
+The isolated client state has been replaced with one shared commerce source of truth:
 
-- Next.js Route Handler REST API with Zod validation
-- Persistent database schema and deterministic seed data
-- Shared products, orders, inventory movements and localization data
-- Admin CRUD connected to the customer storefront
-- POS and checkout orders connected to one order workflow
-- Computed dashboard/analytics responses and working exports
-- Automated API and browser-flow verification
+- Next.js Route Handler REST API with Zod request validation
+- Persistent SQLite database, WAL mode, schema bootstrap, indexes and deterministic seed data
+- Shared products, orders, order line snapshots and inventory movement ledger
+- Product create, visibility, localization completeness, stock receipt and archive actions
+- Transactional POS/storefront order creation with server-side price and stock validation
+- Live admin order status workflow, computed dashboard/analytics API and CSV export
+- Dynamic storefront publishing: admin visibility changes affect catalog and product routes
+- API integration verification plus desktop and 375px real-browser checks
+
+## REST API
+
+| Endpoint | Methods | Purpose |
+| --- | --- | --- |
+| `/api/health` | `GET` | Service and database health |
+| `/api/products` | `GET`, `POST` | Admin/storefront catalog and product creation |
+| `/api/products/[id]` | `GET`, `PATCH`, `DELETE` | Product update and safe archive |
+| `/api/orders` | `GET`, `POST` | Online and POS order workflow |
+| `/api/orders/[id]` | `GET`, `PATCH` | Order detail and status update |
+| `/api/inventory` | `GET`, `POST` | Stock movements and receipts |
+| `/api/analytics` | `GET` | Computed commerce totals |
+| `/api/analytics/export` | `GET` | UTF-8 order CSV export |
 
 ## Technology
 
@@ -55,6 +69,7 @@ The next implementation phase has started and will replace isolated client mock 
 - TanStack Table
 - Recharts
 - GSAP Flip shared-element transitions
+- better-sqlite3 persistent local database
 - Custom nexorapro.dev SVG icon system and Lucide interaction icons
 - Zod, React Hook Form (prepared for validated forms)
 
@@ -66,6 +81,8 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) for the storefront and [http://localhost:3000/admin](http://localhost:3000/admin) for the admin panel.
+
+The database is created automatically at `data/nexora.db`. Override it with `NEXORAPRO_DB_PATH` when an isolated database is needed.
 
 ## Quality checks
 
@@ -82,14 +99,15 @@ The current implementation has been checked at desktop and 375px mobile widths u
 - [Development roadmap](docs/ROADMAP.md)
 - [Design system](docs/DESIGN_SYSTEM.md)
 
-## Current limitations before the API phase lands
+## Current production limitations
 
-- Admin product and sales data currently resets after refresh.
-- Admin and storefront still read separate seed collections.
 - Authentication and RBAC are not connected yet.
 - Product media uses local optimized assets and official external demo video URLs; upload storage is not connected yet.
-- POS sales and storefront checkout do not yet create records in the admin order list.
-- Analytics values are demo data and not financial records.
+- Checkout creates a real local order, but no external payment is captured in portfolio mode.
+- SQLite is intended for the local/single-instance portfolio deployment; multi-instance production requires PostgreSQL and migrations.
+- Localization currently persists locale completeness, not separate translated product copy.
+- Conversion funnel and chart time-series remain illustrative; dashboard totals, product sales, order counts, stock, and CSV are database-derived.
+- Supplier purchasing, transfers, refunds, audit logs, automated auth/security tests, and external delivery integrations are not implemented yet.
 
 ## Definition of production-ready for this project
 

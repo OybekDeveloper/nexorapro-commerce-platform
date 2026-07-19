@@ -3,30 +3,35 @@ import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-
 
 import { CategoryChart, RevenueChart } from "@/components/admin/sales-chart";
 import { NexoraIcon, type NexoraIconName } from "@/components/icons/nexora-icons";
-import { products } from "@/lib/mock-data";
+import { getAnalytics, listProducts } from "@/server/commerce-repository";
 
-const stats: Array<{ label: string; value: string; suffix: string; trend: string; positive: boolean; icon: NexoraIconName }> = [
-  { label: "Umumiy tushum", value: "489.2 mln", suffix: "so‘m", trend: "+18.2%", positive: true, icon: "revenue" },
-  { label: "Buyurtmalar", value: "1 284", suffix: "ta", trend: "+12.6%", positive: true, icon: "order" },
-  { label: "O‘rtacha chek", value: "381 000", suffix: "so‘m", trend: "+4.1%", positive: true, icon: "average" },
-  { label: "Qaytarilgan", value: "2.8%", suffix: "", trend: "-0.6%", positive: true, icon: "return" },
-];
-
-const recentOrders = [
-  { id: "#NX-1062", customer: "Sardor Karimov", product: "iPhone 17 Pro", total: "20 999 000", status: "Yangi" },
-  { id: "#NX-1061", customer: "Madina Islomova", product: "AirPods Pro 3", total: "6 998 000", status: "To‘landi" },
-  { id: "#NX-1060", customer: "Azizbek Tursunov", product: "MacBook Air 13 M5", total: "17 999 000", status: "Tayyorlanmoqda" },
-  { id: "#NX-1059", customer: "Kamola Rahimova", product: "iPad Air 11 M4", total: "10 999 000", status: "Yetkazilmoqda" },
-];
+const formatMoney = (value: number) => Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+const statusLabels = { new: "Yangi", paid: "To‘landi", packing: "Tayyorlanmoqda", shipping: "Yetkazilmoqda", completed: "Yakunlandi", cancelled: "Bekor qilindi" };
 
 export default function AdminDashboardPage() {
+  const products = listProducts();
+  const analytics = getAnalytics();
   const lowStock = products.filter((product) => product.stock <= 5);
+  const averageOrder = analytics.orderCount ? analytics.revenue / analytics.orderCount : 0;
+  const stats: Array<{ label: string; value: string; suffix: string; trend: string; positive: boolean; icon: NexoraIconName }> = [
+    { label: "Umumiy tushum", value: `${(analytics.revenue / 1_000_000).toFixed(1)} mln`, suffix: "so‘m", trend: "Live", positive: true, icon: "revenue" },
+    { label: "Buyurtmalar", value: formatMoney(analytics.orderCount), suffix: "ta", trend: "Live", positive: true, icon: "order" },
+    { label: "O‘rtacha chek", value: formatMoney(averageOrder), suffix: "so‘m", trend: "Live", positive: true, icon: "average" },
+    { label: "Sotilgan", value: formatMoney(analytics.unitsSold), suffix: "dona", trend: "DB", positive: true, icon: "return" },
+  ];
+  const recentOrders = analytics.recentOrders.slice(0, 4).map((order) => ({
+    id: order.id,
+    customer: order.customer,
+    product: order.items.map((item) => `${item.productName} × ${item.quantity}`).join(", "),
+    total: formatMoney(order.total),
+    status: statusLabels[order.status],
+  }));
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-brand">17-iyul, 2026</p>
+          <p className="text-sm font-medium text-brand">{new Intl.DateTimeFormat("uz-UZ", { day: "numeric", month: "long", year: "numeric" }).format(new Date())}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">Xayrli kun, Oybek Aka</h1>
           <p className="mt-1 text-sm text-muted-foreground">Do‘koningizning bugungi holati va asosiy ko‘rsatkichlari.</p>
         </div>
@@ -47,7 +52,7 @@ export default function AdminDashboardPage() {
               </div>
               <p className="mt-5 text-sm text-muted-foreground">{stat.label}</p>
               <p className="mt-1 text-2xl font-semibold tracking-[-0.04em]">{stat.value} <span className="text-sm font-medium text-muted-foreground">{stat.suffix}</span></p>
-              <p className="mt-1 text-xs text-muted-foreground">oldingi 30 kunga nisbatan</p>
+              <p className="mt-1 text-xs text-muted-foreground">persistent database hisoboti</p>
             </article>
           );
         })}

@@ -28,6 +28,8 @@ export function PointOfSale() {
   const [customer, setCustomer] = useState("");
   const [discount, setDiscount] = useState("");
   const [completedOrder, setCompletedOrder] = useState<string | null>(null);
+  const [saleError, setSaleError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const sellableProducts = useMemo(() => products.filter((product) => {
     const matchesQuery = `${product.name} ${product.sku}`.toLowerCase().includes(query.toLowerCase());
@@ -59,13 +61,24 @@ export function PointOfSale() {
   const total = subtotal - discountAmount;
   const totalItems = cart.reduce((sum, line) => sum + line.quantity, 0);
 
-  const finishSale = () => {
+  const finishSale = async () => {
     if (!cart.length) return;
-    recordSale(cart.map((line) => ({ productId: line.product.id, quantity: line.quantity })));
-    setCompletedOrder(`#NX-${Math.floor(1050 + Math.random() * 800)}`);
-    setCart([]);
-    setCustomer("");
-    setDiscount("");
+    setSubmitting(true);
+    setSaleError(null);
+    try {
+      const order = await recordSale(
+        cart.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
+        { customer, payment: paymentMethod, discount: discountAmount },
+      );
+      setCompletedOrder(order.id);
+      setCart([]);
+      setCustomer("");
+      setDiscount("");
+    } catch (error) {
+      setSaleError(error instanceof Error ? error.message : "Sotuvni yakunlab bo‘lmadi");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -111,6 +124,7 @@ export function PointOfSale() {
         <div className="flex items-center justify-between border-b border-border p-5"><div><h2 className="font-semibold">Yangi sotuv</h2><p className="mt-1 text-xs text-muted-foreground">{totalItems} ta mahsulot</p></div>{cart.length > 0 && <button type="button" onClick={() => setCart([])} className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label="Savatni tozalash"><Trash2 className="size-4" /></button>}</div>
 
         {completedOrder && <div className="m-4 flex items-start gap-3 rounded-xl border border-brand/20 bg-brand/[0.06] p-3"><span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-brand text-white"><Check className="size-4" /></span><div><p className="text-sm font-semibold">Sotuv yakunlandi</p><p className="mt-0.5 text-xs text-muted-foreground">{completedOrder} buyurtma yaratildi.</p></div><button type="button" onClick={() => setCompletedOrder(null)} className="ml-auto cursor-pointer text-muted-foreground hover:text-foreground" aria-label="Xabarni yopish"><X className="size-4" /></button></div>}
+        {saleError && <div className="m-4 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3 text-sm text-red-700">{saleError}</div>}
 
         <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
           {cart.map((line) => (
@@ -127,7 +141,7 @@ export function PointOfSale() {
           <label className="space-y-1.5"><span className="text-xs font-medium text-muted-foreground">Chegirma, so‘m</span><div className="relative"><NexoraIcon name="discount" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input type="number" inputMode="numeric" min="0" value={discount} onChange={(event) => setDiscount(event.target.value)} placeholder="0" className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></div></label>
           <fieldset><legend className="text-xs font-medium text-muted-foreground">To‘lov usuli</legend><div className="mt-2 grid grid-cols-3 gap-2">{paymentMethods.map((method) => <button type="button" key={method.value} onClick={() => setPaymentMethod(method.value)} className={cn("flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", paymentMethod === method.value ? "border-brand bg-brand/10 text-brand" : "border-border hover:bg-muted")}><NexoraIcon name={method.icon} className="size-[18px]" />{method.label}</button>)}</div></fieldset>
           <div className="space-y-2 border-t border-border pt-4 text-sm"><div className="flex justify-between text-muted-foreground"><span>Oraliq summa</span><span>{formatMoney(subtotal)} so‘m</span></div><div className="flex justify-between text-muted-foreground"><span>Chegirma</span><span>-{formatMoney(discountAmount)} so‘m</span></div><div className="flex items-end justify-between pt-1"><span className="font-semibold">Jami</span><span className="text-xl font-semibold tracking-tight">{formatMoney(total)} so‘m</span></div></div>
-          <button type="button" onClick={finishSale} disabled={!cart.length} className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white shadow-[0_10px_28px_rgba(16,161,132,0.22)] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"><NexoraIcon name="check" className="size-[18px]" />Sotuvni yakunlash</button>
+          <button type="button" onClick={() => void finishSale()} disabled={!cart.length || submitting} className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white shadow-[0_10px_28px_rgba(16,161,132,0.22)] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40"><NexoraIcon name="check" className="size-[18px]" />{submitting ? "Saqlanmoqda..." : "Sotuvni yakunlash"}</button>
         </div>
       </aside>
     </div>

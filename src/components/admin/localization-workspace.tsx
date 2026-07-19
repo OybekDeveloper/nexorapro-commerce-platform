@@ -12,11 +12,173 @@ export function LocalizationWorkspace() {
   const { products, addProductLanguage } = useProductStore();
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState<Language>("RU");
-  const filtered = useMemo(() => products.filter((product) => product.name.toLowerCase().includes(query.toLowerCase())), [products, query]);
+  const filtered = useMemo(
+    () =>
+      products.filter((product) =>
+        product.name.toLowerCase().includes(query.toLowerCase()),
+      ),
+    [products, query],
+  );
   const totalTranslations = products.length * 3;
-  const readyTranslations = products.reduce((sum, product) => sum + product.languages.length, 0);
+  const readyTranslations = products.reduce(
+    (sum, product) => sum + product.languages.length,
+    0,
+  );
   const progress = Math.round((readyTranslations / totalTranslations) * 100);
-  const localeStats = (["UZ", "RU", "EN"] as const).map((locale) => ({ locale, ready: products.filter((product) => product.languages.includes(locale)).length, total: products.length }));
+  const localeStats = (["UZ", "RU", "EN"] as const).map((locale) => ({
+    locale,
+    ready: products.filter((product) => product.languages.includes(locale))
+      .length,
+    total: products.length,
+  }));
 
-  return <div className="space-y-5"><section className="grid gap-4 lg:grid-cols-[1.2fr_2fr]"><article className="rounded-2xl border border-brand/20 bg-brand/[0.045] p-5 shadow-sm"><div className="flex items-start justify-between"><span className="inline-flex size-11 items-center justify-center rounded-xl bg-brand text-white"><Languages className="size-5" /></span><strong className="text-3xl tracking-tight text-brand">{progress}%</strong></div><h2 className="mt-5 font-semibold">Umumiy tarjima holati</h2><p className="mt-1 text-sm text-muted-foreground">{readyTranslations}/{totalTranslations} ta locale kontenti tayyor.</p><div className="mt-4 h-2 overflow-hidden rounded-full bg-brand/15"><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${progress}%` }} /></div></article><div className="grid gap-3 sm:grid-cols-3">{localeStats.map((stat) => { const percentage = Math.round((stat.ready / stat.total) * 100); return <article key={stat.locale} className="rounded-2xl border border-border bg-card p-5 shadow-sm"><div className="flex items-center justify-between"><span className="inline-flex size-10 items-center justify-center rounded-xl bg-muted text-sm font-bold">{stat.locale}</span><span className={cn("rounded-full px-2 py-1 text-xs font-semibold", percentage === 100 ? "bg-brand/10 text-brand" : "bg-amber-500/10 text-amber-700 dark:text-amber-400")}>{percentage}%</span></div><p className="mt-5 font-semibold">{stat.ready}/{stat.total} tayyor</p><p className="mt-1 text-xs text-muted-foreground">Mahsulot kontenti</p></article>; })}</div></section><section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm"><div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between"><div className="relative w-full sm:max-w-sm"><Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><input value={query} onChange={(event) => setQuery(event.target.value)} aria-label="Tarjima mahsulotini qidirish" placeholder="Mahsulot qidirish..." className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></div><div className="flex rounded-xl bg-muted p-1">{(["UZ", "RU", "EN"] as const).map((item) => <button key={item} type="button" onClick={() => setLanguage(item)} className={cn("h-8 cursor-pointer rounded-lg px-3 text-xs font-semibold transition-colors", language === item ? "bg-background text-brand shadow-sm" : "text-muted-foreground hover:text-foreground")}>{item}</button>)}</div></div><div className="divide-y divide-border">{filtered.map((product) => { const ready = product.languages.includes(language); return <article key={product.id} className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"><div className="flex items-center gap-3"><span className="inline-flex size-11 items-center justify-center rounded-xl bg-brand/10 text-xs font-bold text-brand">{product.name.slice(0, 2).toUpperCase()}</span><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">{product.sku} · {product.category}</p></div></div><div className="flex items-center justify-between gap-4 sm:justify-end"><div className="flex gap-1">{(["UZ", "RU", "EN"] as const).map((locale) => <span key={locale} className={cn("inline-flex size-8 items-center justify-center rounded-lg text-[10px] font-bold", product.languages.includes(locale) ? "bg-brand/10 text-brand" : "bg-muted text-muted-foreground")}>{locale}</span>)}</div>{ready ? <span className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand/10 px-3 text-xs font-semibold text-brand"><Check className="size-4" />Tayyor</span> : <button type="button" onClick={() => addProductLanguage(product.id, language)} className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-brand px-3 text-xs font-semibold text-white hover:opacity-85"><Sparkles className="size-4" />Demo tarjima</button>}</div></article>; })}</div><div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">Tarjima actionlari local mock state’da ishlaydi · API bosqichida review workflow ulanadi</div></section></div>;
+  return (
+    <div className="space-y-5">
+      <section className="grid gap-4 lg:grid-cols-[1.2fr_2fr]">
+        <article className="rounded-2xl border border-brand/20 bg-brand/[0.045] p-5 shadow-sm">
+          <div className="flex items-start justify-between">
+            <span className="inline-flex size-11 items-center justify-center rounded-xl bg-brand text-white">
+              <Languages className="size-5" />
+            </span>
+            <strong className="text-3xl tracking-tight text-brand">
+              {progress}%
+            </strong>
+          </div>
+          <h2 className="mt-5 font-semibold">Umumiy tarjima holati</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {readyTranslations}/{totalTranslations} ta locale kontenti tayyor.
+          </p>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-brand/15">
+            <div
+              className="h-full rounded-full bg-brand transition-[width]"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </article>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {localeStats.map((stat) => {
+            const percentage = Math.round((stat.ready / stat.total) * 100);
+            return (
+              <article
+                key={stat.locale}
+                className="rounded-2xl border border-border bg-card p-5 shadow-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex size-10 items-center justify-center rounded-xl bg-muted text-sm font-bold">
+                    {stat.locale}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-1 text-xs font-semibold",
+                      percentage === 100
+                        ? "bg-brand/10 text-brand"
+                        : "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                    )}
+                  >
+                    {percentage}%
+                  </span>
+                </div>
+                <p className="mt-5 font-semibold">
+                  {stat.ready}/{stat.total} tayyor
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mahsulot kontenti
+                </p>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+      <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="Tarjima mahsulotini qidirish"
+              placeholder="Mahsulot qidirish..."
+              className="h-10 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex rounded-xl bg-muted p-1">
+            {(["UZ", "RU", "EN"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setLanguage(item)}
+                className={cn(
+                  "h-8 cursor-pointer rounded-lg px-3 text-xs font-semibold transition-colors",
+                  language === item
+                    ? "bg-background text-brand shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="divide-y divide-border">
+          {filtered.map((product) => {
+            const ready = product.languages.includes(language);
+            return (
+              <article
+                key={product.id}
+                className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex size-11 items-center justify-center rounded-xl bg-brand/10 text-xs font-bold text-brand">
+                    {product.name.slice(0, 2).toUpperCase()}
+                  </span>
+                  <div>
+                    <p className="font-semibold">{product.name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {product.sku} · {product.category}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-4 sm:justify-end">
+                  <div className="flex gap-1">
+                    {(["UZ", "RU", "EN"] as const).map((locale) => (
+                      <span
+                        key={locale}
+                        className={cn(
+                          "inline-flex size-8 items-center justify-center rounded-lg text-[10px] font-bold",
+                          product.languages.includes(locale)
+                            ? "bg-brand/10 text-brand"
+                            : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {locale}
+                      </span>
+                    ))}
+                  </div>
+                  {ready ? (
+                    <span className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-brand/10 px-3 text-xs font-semibold text-brand">
+                      <Check className="size-4" />
+                      Tayyor
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => addProductLanguage(product.id, language)}
+                      className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-brand px-3 text-xs font-semibold text-white hover:opacity-85"
+                    >
+                      <Sparkles className="size-4" />
+                      Tilni tayyorlash
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+          Locale tayyorligi persistent API’da saqlanadi · alohida tarjima matni
+          va review workflow keyingi bosqichda ulanadi
+        </div>
+      </section>
+    </div>
+  );
 }

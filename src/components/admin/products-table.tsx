@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { createColumnHelper, flexRender, getCoreRowModel, getFilteredRowModel, useReactTable } from "@tanstack/react-table";
-import { Check, ChevronDown, Eye, EyeOff, Filter, Languages, MoreHorizontal, Plus, Search, Video, X } from "lucide-react";
+import { Archive, Check, ChevronDown, Eye, EyeOff, Filter, Languages, Plus, Search, Video, X } from "lucide-react";
 
 import { useProductStore } from "@/components/admin/product-store";
 import type { Product, ProductCategory, ProductStatus } from "@/lib/types";
@@ -20,7 +20,7 @@ const statusMeta: Record<ProductStatus, { label: string; className: string }> = 
 const categories: ProductCategory[] = ["Smartfon", "Noutbuk", "Audio", "Planshet", "Aksessuar"];
 
 export function ProductsTable() {
-  const { products: items, addProduct, toggleVisibility } = useProductStore();
+  const { products: items, addProduct, toggleVisibility, archiveProduct } = useProductStore();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | ProductStatus>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -63,15 +63,15 @@ export function ProductsTable() {
         </button>
       ),
     }),
-    columnHelper.display({ id: "actions", cell: ({ row }) => <button type="button" aria-label={`${row.original.name} amallari`} className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><MoreHorizontal className="size-4" /></button> }),
-  ], [toggleVisibility]);
+    columnHelper.display({ id: "actions", cell: ({ row }) => <button type="button" onClick={() => void archiveProduct(row.original.id)} disabled={row.original.status === "archived"} aria-label={`${row.original.name}ni arxivlash`} title="Arxivlash" className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-30"><Archive className="size-4" /></button> }),
+  ], [archiveProduct, toggleVisibility]);
 
   // TanStack Table intentionally exposes non-memoizable functions; React Compiler skips this hook safely.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({ data: filteredItems, columns, state: { globalFilter: query }, onGlobalFilterChange: setQuery, getCoreRowModel: getCoreRowModel(), getFilteredRowModel: getFilteredRowModel() });
 
-  const handleAddProduct = (product: Omit<Product, "id" | "sales">) => {
-    addProduct(product);
+  const handleAddProduct = async (product: Omit<Product, "id" | "sales">) => {
+    await addProduct(product);
     setDialogOpen(false);
   };
 
@@ -129,7 +129,7 @@ export function ProductsTable() {
         </div>
 
         {table.getRowModel().rows.length === 0 && <div className="px-5 py-16 text-center"><p className="font-medium">Mahsulot topilmadi</p><p className="mt-1 text-sm text-muted-foreground">Qidiruv yoki filtrni o‘zgartirib ko‘ring.</p></div>}
-        <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5"><span>{table.getRowModel().rows.length} ta mahsulot ko‘rsatilmoqda</span><span>Demo ma’lumotlar</span></div>
+        <div className="flex items-center justify-between border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5"><span>{table.getRowModel().rows.length} ta mahsulot ko‘rsatilmoqda</span><span>Persistent API</span></div>
       </div>
 
       {dialogOpen && <AddProductDialog onClose={() => setDialogOpen(false)} onAdd={handleAddProduct} />}
@@ -137,7 +137,7 @@ export function ProductsTable() {
   );
 }
 
-function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (product: Omit<Product, "id" | "sales">) => void }) {
+function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (product: Omit<Product, "id" | "sales">) => Promise<void> }) {
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [category, setCategory] = useState<ProductCategory>("Smartfon");
@@ -150,6 +150,8 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
   const [status, setStatus] = useState<ProductStatus>("draft");
   const [visibleOnStorefront, setVisibleOnStorefront] = useState(false);
   const [languages, setLanguages] = useState<Array<"UZ" | "RU" | "EN">>(["UZ"]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const canSubmit = Boolean(name.trim() && sku.trim() && Number(costPrice) > 0 && Number(price) > 0);
   const expectedProfit = Math.max(0, Number(price) - Number(costPrice));
   const margin = Number(price) > 0 ? Math.round((expectedProfit / Number(price)) * 100) : 0;
@@ -160,23 +162,26 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
     <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="add-product-title">
       <button type="button" className="absolute inset-0 cursor-pointer bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Oynani yopish" />
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (!canSubmit) return;
-          onAdd({
-            name: name.trim(),
-            sku: sku.trim().toUpperCase(),
-            category,
-            costPrice: Number(costPrice),
-            price: Number(price),
-            compareAtPrice: Number(compareAtPrice) || undefined,
-            videoUrl: videoUrl.trim() || undefined,
-            videoPosterUrl: videoPosterUrl.trim() || undefined,
-            stock: Number(stock) || 0,
-            status,
-            visibleOnStorefront: status === "published" && visibleOnStorefront,
-            languages: languages.length ? languages : ["UZ"],
-          });
+          setSubmitting(true);
+          setSubmitError(null);
+          try {
+            await onAdd({
+              name: name.trim(), sku: sku.trim().toUpperCase(), category,
+              costPrice: Number(costPrice), price: Number(price),
+              compareAtPrice: Number(compareAtPrice) || undefined,
+              videoUrl: videoUrl.trim() || undefined, videoPosterUrl: videoPosterUrl.trim() || undefined,
+              stock: Number(stock) || 0, status,
+              visibleOnStorefront: status === "published" && visibleOnStorefront,
+              languages: languages.length ? languages : ["UZ"],
+            });
+          } catch (error) {
+            setSubmitError(error instanceof Error ? error.message : "Mahsulot yaratilmadi");
+          } finally {
+            setSubmitting(false);
+          }
         }}
         className="relative max-h-[94vh] w-full overflow-y-auto rounded-t-3xl border border-border bg-background shadow-2xl sm:max-w-2xl sm:rounded-3xl"
       >
@@ -228,7 +233,8 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
             </label>
           </section>
         </div>
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background/95 px-5 py-4 backdrop-blur-xl"><button type="button" onClick={onClose} className="h-10 cursor-pointer rounded-xl border border-border px-4 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Bekor qilish</button><button type="submit" disabled={!canSubmit} className="h-10 cursor-pointer rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40">Mahsulotni yaratish</button></div>
+        {submitError && <p className="mx-5 mb-3 rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700">{submitError}</p>}
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-background/95 px-5 py-4 backdrop-blur-xl"><button type="button" onClick={onClose} className="h-10 cursor-pointer rounded-xl border border-border px-4 text-sm font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Bekor qilish</button><button type="submit" disabled={!canSubmit || submitting} className="h-10 cursor-pointer rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "Saqlanmoqda..." : "Mahsulotni yaratish"}</button></div>
       </form>
     </div>
   );

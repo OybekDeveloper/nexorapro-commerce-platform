@@ -6,6 +6,8 @@ import { Check, ChevronRight, CreditCard, Minus, PackageCheck, Plus, ShieldCheck
 import { useEffect, useRef, useState } from "react";
 
 import { useStore } from "@/components/storefront/store-provider";
+import { apiRequest } from "@/lib/api-client";
+import type { CommerceOrder, PaymentMethod } from "@/lib/commerce";
 import { formatStoreMoney } from "@/lib/storefront-data";
 import { canUseStoreMotion, loadGsap, prefersCompactMotion } from "@/lib/storefront-motion";
 
@@ -19,6 +21,24 @@ export function CartPageContent() {
   const discount = promoApplied ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal - discount;
 
+  const completeCheckout = async (details: { name: string; phone: string; address: string; payment: PaymentMethod }) => {
+    const payload = await apiRequest<{ order: CommerceOrder }>("/api/orders", {
+      method: "POST",
+      body: JSON.stringify({
+        customer: details.name,
+        phone: details.phone,
+        address: details.address,
+        payment: details.payment,
+        channel: "Online",
+        discount,
+        items: cartLines.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
+      }),
+    });
+    setCompletedOrder(payload.order.id);
+    setCheckoutOpen(false);
+    clearCart();
+  };
+
   const applyPromo = () => {
     const valid = promo.trim().toUpperCase() === "NEXORA10";
     setPromoApplied(valid);
@@ -26,7 +46,7 @@ export function CartPageContent() {
   };
 
   if (completedOrder) {
-    return <main id="main-content" className="min-h-[70vh] bg-[#f5f5f7] px-4 py-16 sm:px-6 lg:px-8"><div data-motion-hero className="mx-auto max-w-2xl rounded-[2rem] border border-brand/20 bg-white p-8 text-center shadow-[0_24px_80px_rgba(16,161,132,0.12)] sm:p-12"><span data-motion-hero-item className="mx-auto inline-flex size-16 items-center justify-center rounded-full bg-brand text-white"><Check className="size-8" /></span><p data-motion-hero-item className="mt-6 text-sm font-semibold text-brand">Buyurtma qabul qilindi</p><h1 data-motion-hero-item className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Rahmat! Demo checkout muvaffaqiyatli yakunlandi.</h1><p data-motion-hero-item className="mt-4 text-zinc-600">Buyurtma raqami <strong className="text-[#1d1d1f]">{completedOrder}</strong>. API bosqichida bu ma’lumot backend va payment tizimiga yuboriladi.</p><div data-motion-hero-item className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/catalog" className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-brand px-6 text-sm font-semibold text-white">Katalogga qaytish</Link><Link href="/admin/orders" className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-zinc-100 px-6 text-sm font-semibold">Admin buyurtmalari</Link></div></div></main>;
+    return <main id="main-content" className="min-h-[70vh] bg-[#f5f5f7] px-4 py-16 sm:px-6 lg:px-8"><div data-motion-hero className="mx-auto max-w-2xl rounded-[2rem] border border-brand/20 bg-white p-8 text-center shadow-[0_24px_80px_rgba(16,161,132,0.12)] sm:p-12"><span data-motion-hero-item className="mx-auto inline-flex size-16 items-center justify-center rounded-full bg-brand text-white"><Check className="size-8" /></span><p data-motion-hero-item className="mt-6 text-sm font-semibold text-brand">Buyurtma qabul qilindi</p><h1 data-motion-hero-item className="mt-2 text-3xl font-semibold tracking-[-0.04em]">Rahmat! Checkout muvaffaqiyatli yakunlandi.</h1><p data-motion-hero-item className="mt-4 text-zinc-600">Buyurtma raqami <strong className="text-[#1d1d1f]">{completedOrder}</strong>. Buyurtma backend’da saqlandi va admin panelida boshqariladi.</p><div data-motion-hero-item className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/catalog" className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-brand px-6 text-sm font-semibold text-white">Katalogga qaytish</Link><Link href="/admin/orders" className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-zinc-100 px-6 text-sm font-semibold">Admin buyurtmalari</Link></div></div></main>;
   }
 
   if (cartLines.length === 0) {
@@ -47,16 +67,18 @@ export function CartPageContent() {
         </div>
       </div>
 
-      {checkoutOpen && <CheckoutDialog total={total} onClose={() => setCheckoutOpen(false)} onComplete={() => { const orderId = `#NX-${String(Date.now()).slice(-6)}`; setCompletedOrder(orderId); setCheckoutOpen(false); clearCart(); }} />}
+      {checkoutOpen && <CheckoutDialog total={total} onClose={() => setCheckoutOpen(false)} onComplete={completeCheckout} />}
     </main>
   );
 }
 
-function CheckoutDialog({ total, onClose, onComplete }: { total: number; onClose: () => void; onComplete: () => void }) {
+function CheckoutDialog({ total, onClose, onComplete }: { total: number; onClose: () => void; onComplete: (details: { name: string; phone: string; address: string; payment: PaymentMethod }) => Promise<void> }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [payment, setPayment] = useState("card");
+  const [payment, setPayment] = useState<PaymentMethod>("card");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const backdropRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLFormElement>(null);
   const canSubmit = name.trim().length > 2 && phone.trim().length >= 7 && address.trim().length > 5;
@@ -78,5 +100,5 @@ function CheckoutDialog({ total, onClose, onComplete }: { total: number; onClose
     };
   }, []);
 
-  return <div className="fixed inset-0 z-[75] flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="checkout-title"><button ref={backdropRef} type="button" className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Checkout oynasini yopish" /><form ref={dialogRef} onSubmit={(event) => { event.preventDefault(); if (canSubmit) onComplete(); }} className="relative max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/10 bg-white/95 px-5 py-4 backdrop-blur-xl"><div><p className="text-xs font-semibold text-brand">Xavfsiz demo checkout</p><h2 id="checkout-title" className="mt-1 text-xl font-semibold">Yetkazib berish ma’lumotlari</h2></div><button type="button" onClick={onClose} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100" aria-label="Yopish"><X className="size-5" /></button></div><div className="space-y-5 p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-sm font-medium">Ism va familiya</span><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="Oybek Developer" className="h-11 w-full rounded-xl border border-black/10 px-3 text-sm outline-none focus:ring-2 focus:ring-brand" /></label><label className="space-y-1.5"><span className="text-sm font-medium">Telefon</span><input required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+998 90 123 45 67" className="h-11 w-full rounded-xl border border-black/10 px-3 text-sm outline-none focus:ring-2 focus:ring-brand" /></label></div><label className="space-y-1.5"><span className="text-sm font-medium">Yetkazib berish manzili</span><textarea required value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Toshkent shahri, ko‘cha va uy raqami" rows={3} className="w-full resize-none rounded-xl border border-black/10 p-3 text-sm outline-none focus:ring-2 focus:ring-brand" /></label><fieldset><legend className="text-sm font-medium">To‘lov usuli</legend><div className="mt-2 grid grid-cols-3 gap-2">{[["card", "Karta"], ["cash", "Naqd"], ["installment", "Bo‘lib to‘lash"]].map(([value, label]) => <button key={value} type="button" onClick={() => setPayment(value)} className={`min-h-16 cursor-pointer rounded-xl border px-2 text-xs font-semibold transition-colors ${payment === value ? "border-brand bg-brand/10 text-brand" : "border-black/10 hover:bg-zinc-100"}`}>{label}</button>)}</div></fieldset><div className="rounded-2xl bg-zinc-100 p-4"><div className="flex items-center justify-between"><span className="text-sm text-zinc-600">To‘lov summasi</span><strong>{formatStoreMoney(total)}</strong></div><p className="mt-2 text-xs leading-5 text-zinc-500">Tasdiqlash demo buyurtma yaratadi. Payment API keyingi bosqichda ulanadi.</p></div></div><div className="sticky bottom-0 border-t border-black/10 bg-white/95 p-5 backdrop-blur-xl"><button type="submit" disabled={!canSubmit} className="h-12 w-full cursor-pointer rounded-full bg-brand text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40">Buyurtmani tasdiqlash</button></div></form></div>;
+  return <div className="fixed inset-0 z-[75] flex items-end justify-center sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="checkout-title"><button ref={backdropRef} type="button" className="absolute inset-0 cursor-default bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Checkout oynasini yopish" /><form ref={dialogRef} onSubmit={async (event) => { event.preventDefault(); if (!canSubmit) return; setSubmitting(true); setError(null); try { await onComplete({ name, phone, address, payment }); } catch (cause) { setError(cause instanceof Error ? cause.message : "Buyurtma yaratilmadi"); setSubmitting(false); } }} className="relative max-h-[94vh] w-full overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:max-w-xl sm:rounded-3xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/10 bg-white/95 px-5 py-4 backdrop-blur-xl"><div><p className="text-xs font-semibold text-brand">Xavfsiz checkout</p><h2 id="checkout-title" className="mt-1 text-xl font-semibold">Yetkazib berish ma’lumotlari</h2></div><button type="button" onClick={onClose} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100" aria-label="Yopish"><X className="size-5" /></button></div><div className="space-y-5 p-5"><div className="grid gap-4 sm:grid-cols-2"><label className="space-y-1.5"><span className="text-sm font-medium">Ism va familiya</span><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="Oybek Developer" className="h-11 w-full rounded-xl border border-black/10 px-3 text-sm outline-none focus:ring-2 focus:ring-brand" /></label><label className="space-y-1.5"><span className="text-sm font-medium">Telefon</span><input required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+998 90 123 45 67" className="h-11 w-full rounded-xl border border-black/10 px-3 text-sm outline-none focus:ring-2 focus:ring-brand" /></label></div><label className="space-y-1.5"><span className="text-sm font-medium">Yetkazib berish manzili</span><textarea required value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Toshkent shahri, ko‘cha va uy raqami" rows={3} className="w-full resize-none rounded-xl border border-black/10 p-3 text-sm outline-none focus:ring-2 focus:ring-brand" /></label><fieldset><legend className="text-sm font-medium">To‘lov usuli</legend><div className="mt-2 grid grid-cols-3 gap-2">{([ ["card", "Karta"], ["cash", "Naqd"], ["installment", "Bo‘lib to‘lash"] ] as Array<[PaymentMethod, string]>).map(([value, label]) => <button key={value} type="button" onClick={() => setPayment(value)} className={`min-h-16 cursor-pointer rounded-xl border px-2 text-xs font-semibold transition-colors ${payment === value ? "border-brand bg-brand/10 text-brand" : "border-black/10 hover:bg-zinc-100"}`}>{label}</button>)}</div></fieldset><div className="rounded-2xl bg-zinc-100 p-4"><div className="flex items-center justify-between"><span className="text-sm text-zinc-600">To‘lov summasi</span><strong>{formatStoreMoney(total)}</strong></div><p className="mt-2 text-xs leading-5 text-zinc-500">Buyurtma backend’da saqlanadi. Portfolio rejimida real pul yechilmaydi.</p></div>{error && <p className="rounded-xl bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}</div><div className="sticky bottom-0 border-t border-black/10 bg-white/95 p-5 backdrop-blur-xl"><button type="submit" disabled={!canSubmit || submitting} className="h-12 w-full cursor-pointer rounded-full bg-brand text-sm font-semibold text-white transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40">{submitting ? "Buyurtma saqlanmoqda..." : "Buyurtmani tasdiqlash"}</button></div></form></div>;
 }

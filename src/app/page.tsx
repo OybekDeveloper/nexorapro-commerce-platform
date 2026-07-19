@@ -11,10 +11,12 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { ProductVideoShowcase } from "@/components/storefront/product-video-showcase";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
-import { storeCategories, storefrontProducts } from "@/lib/storefront-data";
+import { storeCategories } from "@/lib/storefront-data";
+import { listProducts } from "@/server/commerce-repository";
 
 export default function Home() {
-  const videoProduct = storefrontProducts.find((product) => product.video);
+  const products = listProducts({ storefrontOnly: true });
+  const videoProduct = products.find((product) => product.video);
 
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
@@ -70,7 +72,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {storefrontProducts.filter((product) => product.featured).map((product) => <ProductCard key={product.id} product={product} />)}
+            {products.filter((product) => product.featured).map((product) => <ProductCard key={product.id} product={product} />)}
           </div>
         </section>
 

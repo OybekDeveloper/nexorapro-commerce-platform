@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+import { useStore } from "@/components/storefront/store-provider";
 import {
   canUseStoreMotion,
   CART_ADDED_EVENT,
@@ -16,7 +17,6 @@ import {
   SHARED_PRODUCT_KEY,
   type CartAddedDetail,
 } from "@/lib/storefront-motion";
-import { storefrontProducts } from "@/lib/storefront-data";
 
 type SharedProductTransfer = {
   slug: string;
@@ -92,6 +92,7 @@ function readSharedProduct(pathname: string) {
 }
 
 export function StorefrontMotionShell({ children }: { children: React.ReactNode }) {
+  const { products } = useStore();
   const pathname = usePathname();
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -360,7 +361,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   }, [toast]);
 
   const toastProduct = toast
-    ? storefrontProducts.find((product) => product.id === toast.productId)
+    ? products.find((product) => product.id === toast.productId)
     : null;
 
   return (

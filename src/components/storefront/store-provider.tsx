@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { storefrontProducts, type StoreProduct } from "@/lib/storefront-data";
 import { CART_ADDED_EVENT, type CartAddedDetail } from "@/lib/storefront-motion";
@@ -12,6 +12,7 @@ type CartLine = { product: StoreProduct; quantity: number };
 type StoreContextValue = {
   locale: StoreLocale;
   setLocale: (locale: StoreLocale) => void;
+  products: StoreProduct[];
   cartItems: CartItem[];
   cartLines: CartLine[];
   cartCount: number;
@@ -26,8 +27,9 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 const CART_KEY = "nexorapro-cart-v1";
 const LOCALE_KEY = "nexorapro-locale-v1";
 
-export function StoreProvider({ children }: { children: React.ReactNode }) {
+export function StoreProvider({ children, initialProducts = storefrontProducts }: { children: React.ReactNode; initialProducts?: StoreProduct[] }) {
   const [locale, setLocaleState] = useState<StoreLocale>("UZ");
+  const [products, setProducts] = useState<StoreProduct[]>(initialProducts);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -48,6 +50,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let active = true;
+    const refresh = () => fetch("/api/products?scope=storefront", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ products: StoreProduct[] }> : null)
+      .then((payload) => { if (active && payload) setProducts(payload.products); })
+      .catch(() => undefined);
+    void refresh();
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    return () => { active = false; window.removeEventListener("focus", onFocus); };
+  }, []);
+
+  useEffect(() => {
     if (hydrated) window.localStorage.setItem(CART_KEY, JSON.stringify(cartItems));
   }, [cartItems, hydrated]);
 
@@ -56,8 +70,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(LOCALE_KEY, nextLocale);
   };
 
-  const addToCart = (productId: string, quantity = 1) => {
-    const product = storefrontProducts.find((item) => item.id === productId);
+  const addToCart = useCallback((productId: string, quantity = 1) => {
+    const product = products.find((item) => item.id === productId);
     if (!product) return;
     const safeQuantity = Math.min(product.stock, Math.max(1, quantity));
     setCartItems((current) => {
@@ -70,10 +84,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new CustomEvent<CartAddedDetail>(CART_ADDED_EVENT, {
       detail: { productId, quantity: safeQuantity },
     }));
-  };
+  }, [products]);
 
-  const updateQuantity = (productId: string, quantity: number) => {
-    const product = storefrontProducts.find((item) => item.id === productId);
+  const updateQuantity = useCallback((productId: string, quantity: number) => {
+    const product = products.find((item) => item.id === productId);
     if (!product) return;
     if (quantity <= 0) {
       setCartItems((current) => current.filter((item) => item.productId !== productId));
@@ -82,16 +96,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setCartItems((current) => current.map((item) => item.productId === productId
       ? { ...item, quantity: Math.min(product.stock, quantity) }
       : item));
-  };
+  }, [products]);
 
   const cartLines = useMemo(() => cartItems.flatMap((item) => {
-    const product = storefrontProducts.find((candidate) => candidate.id === item.productId);
+    const product = products.find((candidate) => candidate.id === item.productId);
     return product ? [{ product, quantity: item.quantity }] : [];
-  }), [cartItems]);
+  }), [cartItems, products]);
 
   const value = useMemo<StoreContextValue>(() => ({
     locale,
     setLocale,
+    products,
     cartItems,
     cartLines,
     cartCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -100,7 +115,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     updateQuantity,
     removeFromCart: (productId) => setCartItems((current) => current.filter((item) => item.productId !== productId)),
     clearCart: () => setCartItems([]),
-  }), [cartItems, cartLines, locale]);
+  }), [addToCart, cartItems, cartLines, locale, products, updateQuantity]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

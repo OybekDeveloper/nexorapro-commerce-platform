@@ -1,7 +1,9 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
+import { apiRequest } from "@/lib/api-client";
+import type { CommerceOrder } from "@/lib/commerce";
 import { products as seedProducts } from "@/lib/mock-data";
 import type { Product } from "@/lib/types";
 
@@ -9,47 +11,86 @@ type SaleLine = { productId: string; quantity: number };
 
 type ProductStoreValue = {
   products: Product[];
-  addProduct: (product: Omit<Product, "id" | "sales">) => void;
-  toggleVisibility: (id: string) => void;
-  restockProduct: (id: string, quantity: number) => void;
-  addProductLanguage: (id: string, language: "UZ" | "RU" | "EN") => void;
-  recordSale: (lines: SaleLine[]) => void;
+  loading: boolean;
+  error: string | null;
+  refreshProducts: () => Promise<void>;
+  addProduct: (product: Omit<Product, "id" | "sales">) => Promise<void>;
+  toggleVisibility: (id: string) => Promise<void>;
+  archiveProduct: (id: string) => Promise<void>;
+  restockProduct: (id: string, quantity: number) => Promise<void>;
+  addProductLanguage: (id: string, language: "UZ" | "RU" | "EN") => Promise<void>;
+  recordSale: (lines: SaleLine[], details?: { customer?: string; payment?: "cash" | "card" | "installment"; discount?: number }) => Promise<CommerceOrder>;
 };
 
 const ProductStoreContext = createContext<ProductStoreValue | null>(null);
 
 export function ProductStoreProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(seedProducts);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const addProduct = (product: Omit<Product, "id" | "sales">) => {
-    setProducts((current) => [{ ...product, id: `prd_${Date.now()}`, sales: 0 }, ...current]);
-  };
+  const run = useCallback(async <T,>(action: () => Promise<T>) => {
+    setError(null);
+    try { return await action(); }
+    catch (cause) {
+      const message = cause instanceof Error ? cause.message : "Amal bajarilmadi";
+      setError(message);
+      throw cause;
+    }
+  }, []);
 
-  const toggleVisibility = (id: string) => {
-    setProducts((current) => current.map((product) => product.id === id ? { ...product, visibleOnStorefront: !product.visibleOnStorefront } : product));
-  };
+  const refreshProducts = useCallback(async () => run(async () => {
+    const payload = await apiRequest<{ products: Product[] }>("/api/products");
+    setProducts(payload.products);
+    setLoading(false);
+  }), [run]);
 
-  const restockProduct = (id: string, quantity: number) => {
-    setProducts((current) => current.map((product) => product.id === id ? { ...product, stock: product.stock + Math.max(0, quantity) } : product));
-  };
+  useEffect(() => {
+    let active = true;
+    apiRequest<{ products: Product[] }>("/api/products")
+      .then((payload) => { if (active) setProducts(payload.products); })
+      .catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Mahsulotlar yuklanmadi"); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const addProductLanguage = (id: string, language: "UZ" | "RU" | "EN") => {
-    setProducts((current) => current.map((product) => product.id === id && !product.languages.includes(language)
-      ? { ...product, languages: [...product.languages, language] }
-      : product));
-  };
+  const addProduct = (product: Omit<Product, "id" | "sales">) => run(async () => {
+    const payload = await apiRequest<{ product: Product }>("/api/products", { method: "POST", body: JSON.stringify(product) });
+    setProducts((current) => [payload.product, ...current]);
+  });
 
-  const recordSale = (lines: SaleLine[]) => {
-    const quantities = new Map(lines.map((line) => [line.productId, line.quantity]));
-    setProducts((current) => current.map((product) => {
-      const quantity = quantities.get(product.id) ?? 0;
-      return quantity > 0
-        ? { ...product, stock: Math.max(0, product.stock - quantity), sales: product.sales + quantity }
-        : product;
-    }));
-  };
+  const toggleVisibility = (id: string) => run(async () => {
+    const current = products.find((product) => product.id === id);
+    if (!current) return;
+    const payload = await apiRequest<{ product: Product }>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify({ visibleOnStorefront: !current.visibleOnStorefront }) });
+    setProducts((items) => items.map((product) => product.id === id ? payload.product : product));
+  });
 
-  return <ProductStoreContext.Provider value={{ products, addProduct, toggleVisibility, restockProduct, addProductLanguage, recordSale }}>{children}</ProductStoreContext.Provider>;
+  const archiveProduct = (id: string) => run(async () => {
+    const payload = await apiRequest<{ product: Product }>(`/api/products/${id}`, { method: "DELETE" });
+    setProducts((items) => items.map((product) => product.id === id ? payload.product : product));
+  });
+
+  const restockProduct = (id: string, quantity: number) => run(async () => {
+    await apiRequest("/api/inventory", { method: "POST", body: JSON.stringify({ productId: id, quantity, type: "restock", location: "Asosiy ombor", note: "Admin panel orqali kirim" }) });
+    await refreshProducts();
+  });
+
+  const addProductLanguage = (id: string, language: "UZ" | "RU" | "EN") => run(async () => {
+    const payload = await apiRequest<{ product: Product }>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify({ addLanguage: language }) });
+    setProducts((items) => items.map((product) => product.id === id ? payload.product : product));
+  });
+
+  const recordSale = (lines: SaleLine[], details: { customer?: string; payment?: "cash" | "card" | "installment"; discount?: number } = {}) => run(async () => {
+    const payload = await apiRequest<{ order: CommerceOrder }>("/api/orders", {
+      method: "POST",
+      body: JSON.stringify({ items: lines, channel: "POS", customer: details.customer || "POS mijoz", payment: details.payment ?? "card", discount: details.discount ?? 0 }),
+    });
+    await refreshProducts();
+    return payload.order;
+  });
+
+  return <ProductStoreContext.Provider value={{ products, loading, error, refreshProducts, addProduct, toggleVisibility, archiveProduct, restockProduct, addProductLanguage, recordSale }}>{children}</ProductStoreContext.Provider>;
 }
 
 export function useProductStore() {

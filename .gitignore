@@ -36,6 +36,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local persistent database
+data/*.db
+data/*.db-*
+data/*.sqlite
+data/*.sqlite-*
+
 # vercel
 .vercel
 

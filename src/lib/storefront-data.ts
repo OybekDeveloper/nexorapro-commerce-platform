@@ -1,4 +1,4 @@
-export type StoreCategory = "Smartfon" | "Noutbuk" | "Planshet" | "Audio";
+export type StoreCategory = "Smartfon" | "Noutbuk" | "Planshet" | "Audio" | "Aksessuar";
 
 export type StoreProductVideo = {
   src: string;
@@ -171,6 +171,7 @@ export const storeCategories: Array<{ value: StoreCategory; label: string; descr
   { value: "Noutbuk", label: "Noutbuklar", description: "Ish va ijod uchun kuch", image: "/products/macbook-air-m5.png" },
   { value: "Planshet", label: "Planshetlar", description: "Yengil va professional", image: "/products/ipad-air-m4.png" },
   { value: "Audio", label: "Audio", description: "Tiniq va chuqur ovoz", image: "/products/airpods-pro-3.png" },
+  { value: "Aksessuar", label: "Aksessuarlar", description: "Qulay kundalik qo‘shimchalar", image: "/products/airpods-pro-3.png" },
 ];
 
 export const formatStoreMoney = (value: number) => `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} so‘m`;

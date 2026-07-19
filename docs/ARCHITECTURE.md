@@ -4,12 +4,10 @@
 
 ```text
 Customer storefront ─┐
-                     ├── Next.js application ── Domain services ── PostgreSQL
-Admin workspace ─────┘             │                    │
-                                   │                    ├── Redis / jobs
-                                   │                    ├── Object storage
-                                   │                    └── Payment / delivery providers
-                                   └── Auth + organization-aware RBAC
+                     ├── Next.js 16 application ── repositories ── SQLite (current)
+Admin workspace ─────┘             │
+                                   ├── Route Handler REST API + Zod
+                                   └── PostgreSQL / auth / external providers (production target)
 ```
 
 The storefront and admin workspace share product, pricing, inventory, localization, and order domains. Presentation code remains separate so the customer experience can be optimized independently from data-heavy admin workflows.
@@ -56,16 +54,16 @@ Money is stored in minor units using integers; currency is stored explicitly. Or
 ## Application boundaries
 
 ```text
-src/app              Routes, layouts, server entry points
+src/app              Routes, layouts, server pages, and REST route handlers
 src/components       Storefront, admin, and shared UI
-src/lib              Types, domain helpers, adapters
-future: src/server   Auth, services, repositories, jobs
-future: db           Schema, migrations, seed data
+src/lib              Shared schemas, API client, types, helpers, and adapters
+src/server           SQLite bootstrap, repositories, transactions, HTTP errors
+data/nexora.db        Ignored local persistent database created at runtime
 ```
 
 ## Mutation rules
 
-All future mutations should follow:
+Current commerce mutations follow steps 3–6. Production mutations will follow the complete sequence:
 
 1. Authenticate the user.
 2. Resolve organization and role permissions.

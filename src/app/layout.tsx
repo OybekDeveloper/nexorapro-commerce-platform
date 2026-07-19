@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { connection } from "next/server";
 
 import { StoreProvider } from "@/components/storefront/store-provider";
 import { StorefrontMotionShell } from "@/components/storefront/storefront-motion-shell";
+import { listProducts } from "@/server/commerce-repository";
 
 import "./globals.css";
 
@@ -36,11 +38,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  await connection();
+  const products = listProducts({ storefrontOnly: true });
   return (
     <html
       lang="uz"
@@ -49,7 +53,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="flex min-h-full flex-col">
-        <StoreProvider>
+        <StoreProvider initialProducts={products}>
           <StorefrontMotionShell>{children}</StorefrontMotionShell>
         </StoreProvider>
       </body>

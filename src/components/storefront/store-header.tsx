@@ -7,7 +7,6 @@ import { ArrowRight, Globe2, Menu, Search, ShoppingBag, UserRound, X } from "luc
 
 import { NexoraMark } from "@/components/icons/nexora-icons";
 import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
-import { storefrontProducts } from "@/lib/storefront-data";
 import { canUseStoreMotion, CART_ADDED_EVENT, loadGsap, prefersCompactMotion } from "@/lib/storefront-motion";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +19,7 @@ const copy = {
 export function StoreHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const { locale, setLocale, cartCount } = useStore();
+  const { locale, setLocale, cartCount, products } = useStore();
   const [searchOpen, setSearchOpen] = useState(false);
   const [localeOpen, setLocaleOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -128,7 +127,7 @@ export function StoreHeader() {
     };
   }, [menuOpen]);
 
-  const results = useMemo(() => query.trim().length < 2 ? [] : storefrontProducts.filter((product) => `${product.name} ${product.category} ${product.specs.join(" ")}`.toLowerCase().includes(query.toLowerCase())).slice(0, 4), [query]);
+  const results = useMemo(() => query.trim().length < 2 ? [] : products.filter((product) => `${product.name} ${product.category} ${product.specs.join(" ")}`.toLowerCase().includes(query.toLowerCase())).slice(0, 4), [products, query]);
 
   const submitSearch = () => {
     const cleanQuery = query.trim();
