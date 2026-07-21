@@ -17,9 +17,9 @@ export default async function AdminDashboardPage() {
   const lowStock = products.filter((product) => product.stock <= 5);
   const averageOrder = analytics.orderCount ? analytics.revenue / analytics.orderCount : 0;
   const stats: Array<{ label: string; value: string; suffix: string; trend: string; positive: boolean; icon: NexoraIconName }> = [
-    { label: "Umumiy tushum", value: `${(analytics.revenue / 1_000_000).toFixed(1)} mln`, suffix: "so‘m", trend: "Live", positive: true, icon: "revenue" },
+    { label: "Umumiy tushum", value: `${(analytics.revenue / 1_000_000).toFixed(1)} mln`, suffix: "UZS", trend: "Live", positive: true, icon: "revenue" },
     { label: "Buyurtmalar", value: formatMoney(analytics.orderCount), suffix: "ta", trend: "Live", positive: true, icon: "order" },
-    { label: "O‘rtacha chek", value: formatMoney(averageOrder), suffix: "so‘m", trend: "Live", positive: true, icon: "average" },
+    { label: "O‘rtacha chek", value: formatMoney(averageOrder), suffix: "UZS", trend: "Live", positive: true, icon: "average" },
     { label: "Sotilgan", value: formatMoney(analytics.unitsSold), suffix: "dona", trend: "DB", positive: true, icon: "return" },
   ];
   const recentOrders = analytics.recentOrders.slice(0, 4).map((order) => ({
@@ -64,7 +64,7 @@ export default async function AdminDashboardPage() {
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.75fr)]">
         <article className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
           <div className="mb-5 flex items-start justify-between">
-            <div><h2 className="font-semibold">Sotuv dinamikasi</h2><p className="mt-1 text-sm text-muted-foreground">Oxirgi 30 kun, mln so‘m</p></div>
+            <div><h2 className="font-semibold">Sotuv dinamikasi</h2><p className="mt-1 text-sm text-muted-foreground">Oxirgi 30 kun, mln UZS</p></div>
             <select aria-label="Grafik davri" className="h-9 cursor-pointer rounded-xl border border-border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"><option>30 kun</option><option>7 kun</option><option>90 kun</option></select>
           </div>
           <RevenueChart />
@@ -87,7 +87,7 @@ export default async function AdminDashboardPage() {
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground"><tr><th className="px-6 py-3 font-medium">Buyurtma</th><th className="px-4 py-3 font-medium">Mijoz</th><th className="px-4 py-3 font-medium">Mahsulot</th><th className="px-4 py-3 font-medium">Summa</th><th className="px-4 py-3 font-medium">Holat</th></tr></thead>
               <tbody className="divide-y divide-border">
-                {recentOrders.map((order) => <tr key={order.id} className="transition-colors hover:bg-muted/40"><td className="px-6 py-4 font-semibold">{order.id}</td><td className="px-4 py-4">{order.customer}</td><td className="px-4 py-4 text-muted-foreground">{order.product}</td><td className="px-4 py-4 font-medium">{order.total} so‘m</td><td className="px-4 py-4"><span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">{order.status}</span></td></tr>)}
+                {recentOrders.map((order) => <tr key={order.id} className="transition-colors hover:bg-muted/40"><td className="px-6 py-4 font-semibold">{order.id}</td><td className="px-4 py-4">{order.customer}</td><td className="px-4 py-4 text-muted-foreground">{order.product}</td><td className="px-4 py-4 font-medium">{order.total} UZS</td><td className="px-4 py-4"><span className="rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">{order.status}</span></td></tr>)}
               </tbody>
             </table>
           </div>

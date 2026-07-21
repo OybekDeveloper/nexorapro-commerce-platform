@@ -49,7 +49,12 @@ type ProductRow = {
   updated_at: string;
 };
 
-type OrderRow = Omit<CommerceOrder, "items" | "createdAt" | "userId"> & { created_at: string; user_id: string | null };
+type OrderRow = Omit<CommerceOrder, "items" | "createdAt" | "userId" | "addressLatitude" | "addressLongitude"> & {
+  created_at: string;
+  user_id: string | null;
+  address_lat: number | null;
+  address_lng: number | null;
+};
 
 function parseStringArray(value: string) {
   try {
@@ -107,8 +112,15 @@ function getOrderItems(orderId: string): CommerceOrderItem[] {
 }
 
 function mapOrder(row: OrderRow, items = getOrderItems(row.id)): CommerceOrder {
-  const { created_at, user_id, ...order } = row;
-  return { ...order, userId: user_id ?? undefined, createdAt: created_at, items };
+  const { created_at, user_id, address_lat, address_lng, ...order } = row;
+  return {
+    ...order,
+    userId: user_id ?? undefined,
+    addressLatitude: address_lat ?? undefined,
+    addressLongitude: address_lng ?? undefined,
+    createdAt: created_at,
+    items,
+  };
 }
 
 function mapOrders(rows: OrderRow[]) {
@@ -209,17 +221,17 @@ export function archiveProduct(id: string) {
 }
 
 export function listOrders() {
-  const rows = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders ORDER BY datetime(created_at) DESC, sequence DESC").all() as OrderRow[];
+  const rows = database.prepare("SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders ORDER BY datetime(created_at) DESC, sequence DESC").all() as OrderRow[];
   return mapOrders(rows);
 }
 
 export function listOrdersByUser(userId: string) {
-  const rows = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE user_id = ? ORDER BY datetime(created_at) DESC, sequence DESC").all(userId) as OrderRow[];
+  const rows = database.prepare("SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE user_id = ? ORDER BY datetime(created_at) DESC, sequence DESC").all(userId) as OrderRow[];
   return mapOrders(rows);
 }
 
 export function getOrder(id: string) {
-  const row = database.prepare("SELECT id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE id = ?").get(id) as OrderRow | undefined;
+  const row = database.prepare("SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE id = ?").get(id) as OrderRow | undefined;
   return row ? mapOrder(row) : null;
 }
 
@@ -239,9 +251,23 @@ export function createOrder(input: CreateOrderInput, userId?: string) {
     const latest = database.prepare("SELECT COALESCE(MAX(CAST(SUBSTR(id, 5) AS INTEGER)), 1000) AS value FROM orders").get() as { value: number };
     const id = `#NX-${latest.value + 1}`;
     database.prepare(`
-      INSERT INTO orders (id, customer, phone, address, channel, payment, status, subtotal, discount, total, user_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, input.customer || "Mehmon mijoz", input.phone, input.address, input.channel, input.payment, input.channel === "POS" ? "paid" : "new", subtotal, discount, total, userId ?? null);
+      INSERT INTO orders (id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      input.customer || "Mehmon mijoz",
+      input.phone,
+      input.address,
+      input.addressLatitude ?? null,
+      input.addressLongitude ?? null,
+      input.channel,
+      input.payment,
+      input.channel === "POS" ? "paid" : "new",
+      subtotal,
+      discount,
+      total,
+      userId ?? null,
+    );
     const insertItem = database.prepare("INSERT INTO order_items (order_id, product_id, product_name, sku, price, quantity) VALUES (?, ?, ?, ?, ?, ?)");
     const updateStock = database.prepare("UPDATE products SET stock = stock - ?, sales = sales + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND stock >= ?");
     const movement = database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, note) VALUES (?, 'sale', ?, ?)");

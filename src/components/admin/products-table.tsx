@@ -40,7 +40,7 @@ export function ProductsTable() {
       ),
     }),
     columnHelper.accessor("category", { header: "Kategoriya", cell: (info) => <span className="text-muted-foreground">{info.getValue()}</span> }),
-    columnHelper.accessor("price", { header: "Narx", cell: (info) => <span className="whitespace-nowrap font-medium">{formatMoney(info.getValue())} so‘m</span> }),
+    columnHelper.accessor("price", { header: "Narx", cell: (info) => <span className="whitespace-nowrap font-medium">{formatMoney(info.getValue())} UZS</span> }),
     columnHelper.accessor("stock", {
       header: "Ombor",
       cell: (info) => <span className={cn("whitespace-nowrap font-medium", info.getValue() === 0 ? "text-red-600" : info.getValue() <= 5 ? "text-amber-600" : "")}>{info.getValue()} dona</span>,
@@ -118,7 +118,7 @@ export function ProductsTable() {
                   <div><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-muted-foreground">{product.sku} · {product.category}</p></div>
                   <span className={cn("shrink-0 rounded-full px-2 py-1 text-xs font-semibold", statusMeta[product.status].className)}>{statusMeta[product.status].label}</span>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Narx</p><p className="mt-1 font-medium">{formatMoney(product.price)} so‘m</p></div><div><p className="text-xs text-muted-foreground">Ombor</p><p className="mt-1 font-medium">{product.stock} dona</p></div></div>
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm"><div><p className="text-xs text-muted-foreground">Narx</p><p className="mt-1 font-medium">{formatMoney(product.price)} UZS</p></div><div><p className="text-xs text-muted-foreground">Ombor</p><p className="mt-1 font-medium">{product.stock} dona</p></div></div>
                 <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
                   <div className="flex items-center gap-1"><Languages className="mr-1 size-4 text-muted-foreground" />{product.languages.map((language) => <span key={language} className="rounded-md bg-muted px-1.5 py-1 text-[10px] font-bold">{language}</span>)}</div>
                   <button type="button" onClick={() => toggleVisibility(product.id)} className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg bg-muted px-2.5 text-xs font-semibold transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{product.visibleOnStorefront ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}{product.visibleOnStorefront ? "Ko‘rinadi" : "Yashirin"}</button>
@@ -215,7 +215,7 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
               <label className="space-y-1.5"><span className="text-sm font-medium">Eski narx</span><input type="number" inputMode="numeric" min="0" value={compareAtPrice} onChange={(event) => setCompareAtPrice(event.target.value)} placeholder="17999000" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl bg-background px-3 py-2.5 text-xs">
-              <span className="text-muted-foreground">Taxminiy foyda: <strong className="text-foreground">{formatMoney(expectedProfit)} so‘m</strong></span>
+              <span className="text-muted-foreground">Taxminiy foyda: <strong className="text-foreground">{formatMoney(expectedProfit)} UZS</strong></span>
               <span className="text-muted-foreground">Marja: <strong className="text-brand">{margin}%</strong></span>
               {Number(costPrice) > Number(price) && Number(price) > 0 && <span className="text-red-600">Sotuv narxi kirim narxidan past.</span>}
             </div>

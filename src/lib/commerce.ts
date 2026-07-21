@@ -32,6 +32,8 @@ export type CommerceOrder = {
   customer: string;
   phone: string;
   address: string;
+  addressLatitude?: number;
+  addressLongitude?: number;
   channel: OrderChannel;
   payment: PaymentMethod;
   status: OrderStatus;
@@ -79,6 +81,8 @@ export const createOrderSchema = z.object({
   customer: z.string().trim().max(120).default("Mehmon mijoz"),
   phone: z.string().trim().max(40).default(""),
   address: z.string().trim().max(240).default(""),
+  addressLatitude: z.number().min(-90).max(90).optional(),
+  addressLongitude: z.number().min(-180).max(180).optional(),
   channel: orderChannelSchema.default("Online"),
   payment: paymentMethodSchema.default("card"),
   discount: z.number().int().nonnegative().default(0),
@@ -86,6 +90,12 @@ export const createOrderSchema = z.object({
     productId: z.string().min(1),
     quantity: z.number().int().positive().max(100),
   })).min(1),
+}).superRefine((value, context) => {
+  if (value.channel !== "Online") return;
+  if (value.address.length < 5) context.addIssue({ code: "custom", path: ["address"], message: "Yetkazib berish manzilini tanlang" });
+  if (value.addressLatitude === undefined || value.addressLongitude === undefined) {
+    context.addIssue({ code: "custom", path: ["addressLatitude"], message: "Xaritadan yetkazib berish nuqtasini tanlang" });
+  }
 });
 
 export const inventoryMovementSchema = z.object({

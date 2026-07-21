@@ -1,7 +1,7 @@
 import type { Product } from "@/lib/types";
 
 export const products: Product[] = [
-  { id: "prd_001", name: "iPhone 17 Pro", sku: "APL-IP17P-256-OR", category: "Smartfon", costPrice: 18100000, price: 20999000, compareAtPrice: 21999000, videoUrl: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-forged-plateau/large_2x.mp4", videoPosterUrl: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-forged-plateau/posters/Apple-iPhone-17-Pro-forged-plateau-250909.jpg.large_2x.jpg", stock: 18, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 146 },
+  { id: "prd_001", name: "iPhone 17 Pro", sku: "APL-IP17P-256-OR", category: "Smartfon", costPrice: 18100000, price: 20999000, compareAtPrice: 21999000, videoUrl: "/products/videos/iphone-17-pro-forged-plateau.mp4", videoPosterUrl: "/products/videos/iphone-17-pro-forged-plateau.jpg", stock: 18, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 146 },
   { id: "prd_002", name: "iPhone 17 Pro Max", sku: "APL-IP17PM-512-OR", category: "Smartfon", costPrice: 22800000, price: 26499000, stock: 7, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU"], sales: 79 },
   { id: "prd_003", name: "MacBook Air 13 M5", sku: "APL-MBA13-M5-512-SB", category: "Noutbuk", costPrice: 15100000, price: 17999000, compareAtPrice: 18999000, stock: 12, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU", "EN"], sales: 68 },
   { id: "prd_004", name: "MacBook Air 15 M5", sku: "APL-MBA15-M5-512-SB", category: "Noutbuk", costPrice: 18300000, price: 21499000, stock: 6, status: "published", visibleOnStorefront: true, languages: ["UZ", "EN"], sales: 41 },

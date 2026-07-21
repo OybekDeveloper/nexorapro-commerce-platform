@@ -10,7 +10,9 @@ type GsapInstance = (typeof import("gsap"))["gsap"];
 type FlipInstance = (typeof import("gsap/Flip"))["Flip"];
 
 const importGsap = () => import("gsap").then((module) => module.gsap);
-let gsapPromise: Promise<GsapInstance> | null = canUseStoreMotion() ? importGsap() : null;
+// Imported lazily on first use so the GSAP chunk never competes with the
+// critical render path (hero image LCP) during initial page load.
+let gsapPromise: Promise<GsapInstance> | null = null;
 let flipPromise: Promise<{ gsap: GsapInstance; Flip: FlipInstance }> | null = null;
 
 export function loadGsap() {

@@ -20,21 +20,21 @@ nexorapro.dev serves electronics retailers that sell products such as smartphone
 
 ## Working routes
 
-| Route | Purpose | Status |
-| --- | --- | --- |
-| `/` | Premium storefront, product discovery, motion and video showcase | Database-backed |
-| `/catalog` | Search, categories, filters and published product listing | Database-backed |
-| `/product/[slug]` | Product details, shared-image transition and purchase controls | Database-backed |
-| `/cart` | Persistent browser cart, promo and checkout order creation | API-backed |
-| `/login`, `/account` | Email registration/login and private customer order history | Session-protected |
-| `/admin-login` | Separate administrator login | Session-protected |
-| `/admin` | Executive commerce dashboard | Computed from database |
-| `/admin/products` | Create, publish visibility, localization and archive lifecycle | API-backed |
-| `/admin/sales` | POS cart, discount, payment, order and atomic stock deduction | API-backed |
-| `/admin/inventory` | Stock receipt and inventory movement ledger | API-backed |
-| `/admin/orders` | Online/POS orders, search, details and status workflow | API-backed |
-| `/admin/analytics` | Product metrics and working order CSV export | Mixed live/demo analytics |
-| `/admin/localization` | Persistent UZ/RU/EN completeness workflow | API-backed |
+| Route                 | Purpose                                                            | Status                    |
+| --------------------- | ------------------------------------------------------------------ | ------------------------- |
+| `/`                   | Premium storefront, product discovery, motion and video showcase   | Database-backed           |
+| `/catalog`            | Search, categories, filters and published product listing          | Database-backed           |
+| `/product/[slug]`     | Product details, shared-image transition and purchase controls     | Database-backed           |
+| `/cart`               | Persistent cart and Yandex Maps delivery-location checkout         | API-backed                |
+| `/login`, `/account`  | Authentication, private order detail, map and live status timeline | Session-protected         |
+| `/admin-login`        | Separate administrator login                                       | Session-protected         |
+| `/admin`              | Executive commerce dashboard                                       | Computed from database    |
+| `/admin/products`     | Create, publish visibility, localization and archive lifecycle     | API-backed                |
+| `/admin/sales`        | POS cart, discount, payment, order and atomic stock deduction      | API-backed                |
+| `/admin/inventory`    | Stock receipt and inventory movement ledger                        | API-backed                |
+| `/admin/orders`       | Online/POS orders, search, details and status workflow             | API-backed                |
+| `/admin/analytics`    | Product metrics and working order CSV export                       | Mixed live/demo analytics |
+| `/admin/localization` | Persistent UZ/RU/EN completeness workflow                          | API-backed                |
 
 ## Implemented full-stack foundation
 
@@ -45,7 +45,9 @@ The isolated client state has been replaced with one shared commerce source of t
 - Shared products, orders, order line snapshots and inventory movement ledger
 - Product create, visibility, localization completeness, stock receipt and archive actions
 - Transactional POS/storefront order creation with server-side price and stock validation
+- Yandex Maps address search, map/geolocation selection and persisted delivery coordinates
 - Live admin order status workflow, computed dashboard/analytics API and CSV export
+- Private customer order-detail API with live status refresh and delivery-map preview
 - Dynamic storefront publishing: admin visibility changes affect catalog and product routes
 - Email/password authentication with bcrypt hashes, opaque database sessions, HttpOnly cookies and login lockout
 - Admin RBAC enforced inside every private Route Handler, not only in the UI
@@ -55,19 +57,20 @@ The isolated client state has been replaced with one shared commerce source of t
 
 ## REST API
 
-| Endpoint | Methods | Purpose |
-| --- | --- | --- |
-| `/api/health` | `GET` | Service and database health |
-| `/api/auth/register`, `/api/auth/login` | `POST` | Customer account and session creation |
-| `/api/auth/admin/login` | `POST` | Admin-only session creation |
-| `/api/auth/me`, `/api/auth/logout` | `GET`, `POST` | Current session and revocation |
-| `/api/products` | `GET`, `POST` | Admin/storefront catalog and product creation |
-| `/api/products/[id]` | `GET`, `PATCH`, `DELETE` | Product update and safe archive |
-| `/api/orders` | `GET`, `POST` | Online and POS order workflow |
-| `/api/orders/[id]` | `GET`, `PATCH` | Order detail and status update |
-| `/api/inventory` | `GET`, `POST` | Stock movements and receipts |
-| `/api/analytics` | `GET` | Computed commerce totals |
-| `/api/analytics/export` | `GET` | UTF-8 order CSV export |
+| Endpoint                                | Methods                  | Purpose                                                    |
+| --------------------------------------- | ------------------------ | ---------------------------------------------------------- |
+| `/api/health`                           | `GET`                    | Service and database health                                |
+| `/api/auth/register`, `/api/auth/login` | `POST`                   | Customer account and session creation                      |
+| `/api/auth/admin/login`                 | `POST`                   | Admin-only session creation                                |
+| `/api/auth/me`, `/api/auth/logout`      | `GET`, `POST`            | Current session and revocation                             |
+| `/api/products`                         | `GET`, `POST`            | Admin/storefront catalog and product creation              |
+| `/api/products/[id]`                    | `GET`, `PATCH`, `DELETE` | Product update and safe archive                            |
+| `/api/orders`                           | `GET`, `POST`            | Online and POS order workflow                              |
+| `/api/orders/[id]`                      | `GET`, `PATCH`           | Order detail and status update                             |
+| `/api/account/orders`                   | `GET`                    | Current customer’s private order history and live statuses |
+| `/api/inventory`                        | `GET`, `POST`            | Stock movements and receipts                               |
+| `/api/analytics`                        | `GET`                    | Computed commerce totals                                   |
+| `/api/analytics/export`                 | `GET`                    | UTF-8 order CSV export                                     |
 
 ## Technology
 
@@ -87,6 +90,7 @@ The isolated client state has been replaced with one shared commerce source of t
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
@@ -94,15 +98,19 @@ Open [http://localhost:3000](http://localhost:3000) for the storefront and [http
 
 The database is created automatically at `data/nexora.db`. Override it with `NEXORAPRO_DB_PATH` when an isolated database is needed. Development seeds `admin@nexorapro.dev` / `NexoraAdmin2026!`; production does not use that fallback and requires `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` from the environment.
 
+Set `NEXT_PUBLIC_YANDEX_MAPS_JS_API_KEY` in `.env.local` for the delivery map. This is a browser-side public key, so restrict its allowed domains in Yandex Developer settings before deployment.
+
+Address search and reverse geocoding are proxied through `GEOCODING_BASE_URL`. The default public Nominatim service is queued to one request per second, only runs on an explicit user search/map action, and caches results in memory. For a high-traffic commercial deployment, point this variable to a compatible managed or self-hosted geocoder.
+
 Production must be served over HTTPS (for example, Nginx/Caddy in front of `next start`) because session cookies intentionally use the `Secure` flag outside development.
 
 ## Cache and revalidation
 
-| Data | Strategy | Freshness |
-| --- | --- | --- |
-| Published storefront products | Next.js Data Cache, tag `commerce:products` | 5-minute fallback TTL; product/inventory/order mutations expire immediately |
-| Analytics summary | Tagged Data Cache | 60-second fallback TTL; order/product/inventory mutations expire immediately |
-| Session, customer orders, admin lists | Uncached/private reads | Per request |
+| Data                                  | Strategy                                    | Freshness                                                                    |
+| ------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------- |
+| Published storefront products         | Next.js Data Cache, tag `commerce:products` | 5-minute fallback TTL; product/inventory/order mutations expire immediately  |
+| Analytics summary                     | Tagged Data Cache                           | 60-second fallback TTL; order/product/inventory mutations expire immediately |
+| Session, customer orders, admin lists | Uncached/private reads                      | Per request                                                                  |
 
 Mutations combine `revalidateTag(..., { expire: 0 })` with storefront/admin `revalidatePath` calls. This invalidates the data and page/router layers together.
 
