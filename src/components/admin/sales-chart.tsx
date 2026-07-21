@@ -9,7 +9,7 @@ function RevenueTooltip({ active, payload, label }: { active?: boolean; payload?
   return (
     <div className="rounded-xl border border-border bg-popover px-3 py-2 text-xs shadow-lg">
       <p className="text-muted-foreground">{label}-iyul</p>
-      <p className="mt-1 font-semibold">{payload[0].value} mln so‘m</p>
+      <p className="mt-1 font-semibold">{payload[0].value} mln UZS</p>
     </div>
   );
 }

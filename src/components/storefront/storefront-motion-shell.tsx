@@ -98,6 +98,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
   const navigatingRef = useRef(false);
+  const firstRenderRef = useRef(true);
   const toastTimerRef = useRef<number | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
 
@@ -178,48 +179,55 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     let observer: IntersectionObserver | null = null;
     const animatedTargets = new Set<HTMLElement>();
 
+    // The first paint is already server-rendered and visible. Running entrance
+    // animations on initial load only delays the LCP (hero image), so the page
+    // and hero flourishes are reserved for client-side navigations.
+    const firstRender = firstRenderRef.current;
+    firstRenderRef.current = false;
+
     void loadGsap().then((gsap) => {
       if (cancelled) return;
       const compact = prefersCompactMotion();
 
-      gsap.killTweensOf(page);
-      gsap.fromTo(page, {
-        autoAlpha: 0.92,
-        x: compact ? 10 : 16,
-      }, {
-        autoAlpha: 1,
-        x: 0,
-        duration: compact ? 0.26 : 0.32,
-        ease: "power3.out",
-        clearProps: "transform,opacity,visibility,willChange",
-      });
-
-      const hero = page.querySelector<HTMLElement>("[data-motion-hero]");
-      if (hero) {
-        const heroItems = Array.from(hero.querySelectorAll<HTMLElement>("[data-motion-hero-item]"));
-        const heroMedia = hero.querySelector<HTMLElement>("[data-motion-hero-media]");
-        animatedTargets.add(hero);
-        heroItems.forEach((item) => animatedTargets.add(item));
-        if (heroMedia) animatedTargets.add(heroMedia);
-
-        gsap.fromTo(heroItems, { autoAlpha: 0, y: compact ? 10 : 14 }, {
+      if (!firstRender) {
+        gsap.killTweensOf(page);
+        gsap.fromTo(page, {
+          autoAlpha: 0.92,
+          x: compact ? 10 : 16,
+        }, {
           autoAlpha: 1,
-          y: 0,
-          duration: compact ? 0.32 : 0.4,
-          stagger: compact ? 0.025 : 0.04,
+          x: 0,
+          duration: compact ? 0.26 : 0.32,
           ease: "power3.out",
           clearProps: "transform,opacity,visibility,willChange",
         });
-        if (heroMedia) {
-          gsap.fromTo(heroMedia, { autoAlpha: 0, y: compact ? 10 : 14, scale: 1.012 }, {
+
+        const hero = page.querySelector<HTMLElement>("[data-motion-hero]");
+        if (hero) {
+          const heroItems = Array.from(hero.querySelectorAll<HTMLElement>("[data-motion-hero-item]"));
+          const heroMedia = hero.querySelector<HTMLElement>("[data-motion-hero-media]");
+          animatedTargets.add(hero);
+          heroItems.forEach((item) => animatedTargets.add(item));
+          if (heroMedia) animatedTargets.add(heroMedia);
+
+          gsap.fromTo(heroItems, { autoAlpha: 0, y: compact ? 10 : 14 }, {
             autoAlpha: 1,
             y: 0,
-            scale: 1,
-            duration: compact ? 0.38 : 0.46,
-            delay: 0.025,
+            duration: compact ? 0.32 : 0.4,
+            stagger: compact ? 0.025 : 0.04,
             ease: "power3.out",
             clearProps: "transform,opacity,visibility,willChange",
           });
+          if (heroMedia) {
+            gsap.fromTo(heroMedia, { y: compact ? 10 : 14, scale: 1.012 }, {
+              y: 0,
+              scale: 1,
+              duration: compact ? 0.38 : 0.46,
+              delay: 0.025,
+              ease: "power3.out",
+              clearProps: "transform,willChange",
+            });
+          }
         }
       }
 

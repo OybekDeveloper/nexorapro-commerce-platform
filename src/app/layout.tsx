@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 
 import { StoreProvider } from "@/components/storefront/store-provider";
@@ -40,7 +39,7 @@ export default async function RootLayout({
       lang="uz"
       suppressHydrationWarning
       data-scroll-behavior="smooth"
-      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="flex min-h-full flex-col">
         <StoreProvider initialProducts={products} initialUser={user}>

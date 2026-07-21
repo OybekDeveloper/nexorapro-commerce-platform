@@ -83,6 +83,8 @@ database.exec(`
     customer TEXT NOT NULL,
     phone TEXT NOT NULL DEFAULT '',
     address TEXT NOT NULL DEFAULT '',
+    address_lat REAL,
+    address_lng REAL,
     channel TEXT NOT NULL,
     payment TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'new',
@@ -126,6 +128,12 @@ if (!orderColumns.some((column) => column.name === "address")) {
 }
 if (!orderColumns.some((column) => column.name === "user_id")) {
   database.exec("ALTER TABLE orders ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL");
+}
+if (!orderColumns.some((column) => column.name === "address_lat")) {
+  database.exec("ALTER TABLE orders ADD COLUMN address_lat REAL");
+}
+if (!orderColumns.some((column) => column.name === "address_lng")) {
+  database.exec("ALTER TABLE orders ADD COLUMN address_lng REAL");
 }
 database.exec("CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, created_at DESC)");
 

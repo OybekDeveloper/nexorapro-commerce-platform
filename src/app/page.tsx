@@ -45,14 +45,17 @@ export default async function Home() {
               </Link>
             </div>
             <div data-motion-hero-media data-motion-banner className="relative mx-auto mt-12 h-[300px] max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_30px_90px_rgba(0,0,0,0.35)] sm:h-[400px] lg:h-[460px]">
-              <Image
-                src="/products/iphone-17-pro.png"
+              {/* Plain <img> for the LCP element: a stable, pre-optimized asset
+                  that paints once and is never re-processed on hydration. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/products/iphone-17-pro-hero.webp"
                 alt="Cosmic Orange rangidagi iPhone 17 Pro kamera tizimi"
-                fill
+                width={1200}
+                height={630}
                 fetchPriority="high"
-                loading="eager"
-                sizes="(max-width: 1280px) 100vw, 1152px"
-                className="object-cover object-center"
+                decoding="async"
+                className="absolute inset-0 size-full object-cover object-center"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black/35 via-transparent to-black/10" />
               <div className="absolute left-5 top-5 rounded-2xl border border-white/10 bg-white/10 p-3 text-left backdrop-blur-xl sm:left-8 sm:top-8 sm:p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-zinc-400">Premium service</p><p className="mt-1 text-sm font-semibold">Original va kafolatli</p></div>

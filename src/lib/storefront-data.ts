@@ -38,8 +38,8 @@ export const storefrontProducts: StoreProduct[] = [
     image: "/products/iphone-17-pro.png",
     imageAlt: "Cosmic Orange rangidagi iPhone 17 Pro",
     video: {
-      src: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-forged-plateau/large_2x.mp4",
-      poster: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-forged-plateau/posters/Apple-iPhone-17-Pro-forged-plateau-250909.jpg.large_2x.jpg",
+      src: "/products/videos/iphone-17-pro-forged-plateau.mp4",
+      poster: "/products/videos/iphone-17-pro-forged-plateau.jpg",
       eyebrow: "iPhone 17 Pro film",
       title: "Titan kuch. Kinematik tafsilot.",
       sourceUrl: "https://www.apple.com/newsroom/2025/09/apple-unveils-iphone-17-pro-and-iphone-17-pro-max/",
@@ -63,8 +63,8 @@ export const storefrontProducts: StoreProduct[] = [
     image: "/products/iphone-17-pro.png",
     imageAlt: "Cosmic Orange rangidagi iPhone 17 Pro Max",
     video: {
-      src: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-camera-center-stage/large_2x.mp4",
-      poster: "https://www.apple.com/newsroom/videos/2025/autoplay/09/apple-iphone-17-pro-camera-center-stage/posters/Apple-iPhone-17-Pro-camera-Center-Stage-250909.jpg.large_2x.jpg",
+      src: "/products/videos/iphone-17-pro-camera-center-stage.mp4",
+      poster: "/products/videos/iphone-17-pro-camera-center-stage.jpg",
       eyebrow: "Center Stage camera",
       title: "Har bir kadr markazida siz.",
       sourceUrl: "https://www.apple.com/newsroom/2025/09/apple-unveils-iphone-17-pro-and-iphone-17-pro-max/",
@@ -174,7 +174,7 @@ export const storeCategories: Array<{ value: StoreCategory; label: string; descr
   { value: "Aksessuar", label: "Aksessuarlar", description: "Qulay kundalik qo‘shimchalar", image: "/products/airpods-pro-3.png" },
 ];
 
-export const formatStoreMoney = (value: number) => `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} so‘m`;
+export const formatStoreMoney = (value: number) => `${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ")} UZS`;
 
 export function getStoreProduct(slug: string) {
   return storefrontProducts.find((product) => product.slug === slug);

@@ -44,7 +44,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         <p className="mt-2 min-h-10 text-sm leading-5 text-zinc-600">{product.description}</p>
         <div className="mt-4 flex flex-wrap gap-1.5">{product.specs.slice(0, 3).map((spec) => <span key={spec} className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">{spec}</span>)}</div>
         <div className="mt-auto flex items-end justify-between gap-4 border-t border-black/5 pt-5">
-          <div><p className="text-xs text-zinc-500">Narxi</p><p className="mt-1 font-semibold text-brand">{formatStoreMoney(product.price)}</p>{product.compareAtPrice && <p className="mt-0.5 text-xs text-zinc-400 line-through">{formatStoreMoney(product.compareAtPrice)}</p>}</div>
+          <div><p className="text-xs text-zinc-500">Narxi</p><p className="mt-1 font-semibold text-brand">{formatStoreMoney(product.price)}</p>{product.compareAtPrice && <p className="mt-0.5 text-xs text-zinc-500 line-through">{formatStoreMoney(product.compareAtPrice)}</p>}</div>
           <button type="button" onClick={handleAdd} className={cn("inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-sm font-semibold text-white transition-[opacity,background-color,min-width] hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2", added && "min-w-[112px] bg-[#0c806a]")} aria-label={`${product.name}ni savatga qo‘shish`} aria-live="polite">
             {added ? <><Check className="size-4" /><span>Qo‘shildi</span></> : <ShoppingBag className="size-4" />}
           </button>

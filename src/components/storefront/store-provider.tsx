@@ -57,10 +57,17 @@ export function StoreProvider({ children, initialProducts = storefrontProducts, 
       .then((response) => response.ok ? response.json() as Promise<{ products: StoreProduct[] }> : null)
       .then((payload) => { if (active && payload) setProducts(payload.products); })
       .catch(() => undefined);
-    void refresh();
+    // SSR already provides fresh products, so skip the redundant refetch on
+    // load (it re-renders the tree during the LCP window). Refresh only when
+    // the tab regains focus, and after the page has gone idle.
     const onFocus = () => void refresh();
+    const idle = window.setTimeout(() => { if (active) void refresh(); }, 4000);
     window.addEventListener("focus", onFocus);
-    return () => { active = false; window.removeEventListener("focus", onFocus); };
+    return () => {
+      active = false;
+      window.clearTimeout(idle);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   useEffect(() => {
