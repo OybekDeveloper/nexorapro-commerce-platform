@@ -60,6 +60,18 @@ activate the Let's Encrypt certificate:
 sudo bash /var/www/nexorapro/current/deploy/harden-server.sh --with-https
 ```
 
+For a newly registered domain whose registry delegation is still pending,
+install the root-owned HTTPS watcher instead. It checks DNS every 15 minutes,
+issues and verifies the certificate when both names resolve to the VPS, enables
+the Certbot renewal timer, and then disables its own provisioning timer:
+
+```bash
+sudo bash /var/www/nexorapro/current/deploy/install-https-timer.sh
+```
+
+The installer copies the executable and Nginx template to root-owned paths;
+systemd never executes a mutable release file with root privileges.
+
 The HTTPS mode exits without requesting a certificate when DNS still points
 elsewhere. The Nginx policy enables HSTS after the certificate becomes valid;
 Cloudflare SSL/TLS should then be set to **Full (strict)**.
