@@ -25,10 +25,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -136,13 +136,25 @@ jobs:
           SSH_PORT="${VPS_PORT:-22}"
           RELEASE_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA}"
           REMOTE_PREFIX="/tmp/nexorapro-${RELEASE_ID}"
+          SSH_OPTIONS=(-o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
 
-          scp -P "$SSH_PORT" "$ARCHIVE_PATH" \
-            "${VPS_USER}@${VPS_HOST}:${REMOTE_PREFIX}.tgz"
-          scp -P "$SSH_PORT" "$ENV_PATH" \
-            "${VPS_USER}@${VPS_HOST}:${REMOTE_PREFIX}.env"
-          scp -P "$SSH_PORT" deploy/activate-release.sh \
-            "${VPS_USER}@${VPS_HOST}:${REMOTE_PREFIX}.sh"
+          upload() {
+            local source_path="$1"
+            local destination_path="$2"
+            for attempt in 1 2 3 4; do
+              if scp "${SSH_OPTIONS[@]}" -P "$SSH_PORT" "$source_path" \
+                "${VPS_USER}@${VPS_HOST}:${destination_path}"
+              then
+                return 0
+              fi
+              if [ "$attempt" -lt 4 ]; then sleep $((attempt * 5)); fi
+            done
+            return 1
+          }
+
+          upload "$ARCHIVE_PATH" "${REMOTE_PREFIX}.tgz"
+          upload "$ENV_PATH" "${REMOTE_PREFIX}.env"
+          upload deploy/activate-release.sh "${REMOTE_PREFIX}.sh"
 
       - name: Activate release
         env:
@@ -154,6 +166,14 @@ jobs:
           SSH_PORT="${VPS_PORT:-22}"
           RELEASE_ID="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${GITHUB_SHA}"
           REMOTE_SCRIPT="/tmp/nexorapro-${RELEASE_ID}.sh"
+          SSH_OPTIONS=(-o ConnectTimeout=20 -o ConnectionAttempts=2 -o ServerAliveInterval=15 -o ServerAliveCountMax=3)
 
-          ssh -p "$SSH_PORT" "${VPS_USER}@${VPS_HOST}" \
-            "bash '$REMOTE_SCRIPT' '$RELEASE_ID'"
+          for attempt in 1 2 3 4; do
+            if ssh "${SSH_OPTIONS[@]}" -p "$SSH_PORT" "${VPS_USER}@${VPS_HOST}" \
+              "bash '$REMOTE_SCRIPT' '$RELEASE_ID'"
+            then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then sleep $((attempt * 5)); fi
+          done
+          exit 1
