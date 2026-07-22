@@ -7,7 +7,7 @@ DEPLOY_USER="deploy"
 NGINX_SOURCE="$APP_ROOT/current/deploy/nginx.conf.example"
 NGINX_SITE="/etc/nginx/sites-available/nexorapro"
 NGINX_ENABLED="/etc/nginx/sites-enabled/nexorapro"
-SSH_HARDENING="/etc/ssh/sshd_config.d/99-nexorapro-hardening.conf"
+SSH_HARDENING="/etc/ssh/sshd_config.d/00-nexorapro-hardening.conf"
 DOMAIN="nexorapro.uz"
 WWW_DOMAIN="www.nexorapro.uz"
 ENABLE_HTTPS=false
@@ -79,6 +79,7 @@ nginx -t
 systemctl reload nginx
 
 install -d -m 755 /etc/ssh/sshd_config.d
+rm -f /etc/ssh/sshd_config.d/99-nexorapro-hardening.conf
 cat >"$SSH_HARDENING" <<'EOF'
 PubkeyAuthentication yes
 PasswordAuthentication no
