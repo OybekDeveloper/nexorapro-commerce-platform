@@ -5,10 +5,12 @@ import { Check, Minus, Plus, Search, Trash2, X } from "lucide-react";
 
 import { useProductStore } from "@/components/admin/product-store";
 import { NexoraIcon, type NexoraIconName } from "@/components/icons/nexora-icons";
-import type { Product, ProductCategory } from "@/lib/types";
+import type { CommerceProduct } from "@/lib/commerce";
+import type { StoreProductVariant } from "@/lib/storefront-data";
+import type { ProductCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-type CartLine = { product: Product; quantity: number };
+type CartLine = { product: CommerceProduct; variant?: StoreProductVariant; quantity: number };
 type PaymentMethod = "cash" | "card" | "installment";
 
 const formatMoney = (value: number) => value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -18,6 +20,7 @@ const paymentMethods: Array<{ value: PaymentMethod; label: string; icon: NexoraI
   { value: "card", label: "Karta", icon: "card" },
   { value: "installment", label: "Bo‘lib to‘lash", icon: "installment" },
 ];
+const lineKey = (productId: string, variantId?: string) => `${productId}:${variantId ?? ""}`;
 
 export function PointOfSale() {
   const { products, recordSale } = useProductStore();
@@ -31,32 +34,41 @@ export function PointOfSale() {
   const [saleError, setSaleError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const sellableProducts = useMemo(() => products.filter((product) => {
-    const matchesQuery = `${product.name} ${product.sku}`.toLowerCase().includes(query.toLowerCase());
-    const matchesCategory = category === "Barchasi" || product.category === category;
-    return product.status === "published" && product.stock > 0 && matchesQuery && matchesCategory;
+  const sellableProducts = useMemo(() => products.flatMap((product) => {
+    if (product.deletedAt || product.status !== "published") return [];
+    const variants = product.variants.filter((variant) => variant.status === "active");
+    const units = variants.length > 0 ? variants.map((variant) => ({ product, variant })) : [{ product, variant: undefined }];
+    return units.filter(({ product: item, variant }) => {
+      const stock = variant?.availableStock ?? variant?.stock ?? item.availableStock ?? item.stock;
+      const matchesQuery = `${item.name} ${item.sku} ${variant?.title ?? ""} ${variant?.sku ?? ""}`.toLowerCase().includes(query.toLowerCase());
+      const matchesCategory = category === "Barchasi" || item.category === category;
+      return stock > 0 && matchesQuery && matchesCategory;
+    });
   }), [products, query, category]);
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: CommerceProduct, variant?: StoreProductVariant) => {
     setCompletedOrder(null);
+    const key = lineKey(product.id, variant?.id);
+    const stock = variant?.availableStock ?? variant?.stock ?? product.availableStock ?? product.stock;
     setCart((current) => {
-      const existing = current.find((line) => line.product.id === product.id);
-      if (!existing) return [...current, { product, quantity: 1 }];
-      return current.map((line) => line.product.id === product.id
-        ? { ...line, quantity: Math.min(product.stock, line.quantity + 1) }
+      const existing = current.find((line) => lineKey(line.product.id, line.variant?.id) === key);
+      if (!existing) return [...current, { product, variant, quantity: 1 }];
+      return current.map((line) => lineKey(line.product.id, line.variant?.id) === key
+        ? { ...line, quantity: Math.min(stock, line.quantity + 1) }
         : line);
     });
   };
 
-  const updateQuantity = (productId: string, change: number) => {
+  const updateQuantity = (productId: string, variantId: string | undefined, change: number) => {
+    const key = lineKey(productId, variantId);
     setCart((current) => current
-      .map((line) => line.product.id === productId
-        ? { ...line, quantity: Math.max(0, Math.min(line.product.stock, line.quantity + change)) }
+      .map((line) => lineKey(line.product.id, line.variant?.id) === key
+        ? { ...line, quantity: Math.max(0, Math.min(line.variant?.availableStock ?? line.variant?.stock ?? line.product.availableStock ?? line.product.stock, line.quantity + change)) }
         : line)
       .filter((line) => line.quantity > 0));
   };
 
-  const subtotal = cart.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
+  const subtotal = cart.reduce((sum, line) => sum + (line.variant?.price ?? line.product.price) * line.quantity, 0);
   const discountAmount = Math.min(subtotal, Math.max(0, Number(discount) || 0));
   const total = subtotal - discountAmount;
   const totalItems = cart.reduce((sum, line) => sum + line.quantity, 0);
@@ -67,7 +79,7 @@ export function PointOfSale() {
     setSaleError(null);
     try {
       const order = await recordSale(
-        cart.map((line) => ({ productId: line.product.id, quantity: line.quantity })),
+        cart.map((line) => ({ productId: line.product.id, variantId: line.variant?.id, quantity: line.quantity })),
         { customer, payment: paymentMethod, discount: discountAmount },
       );
       setCompletedOrder(order.id);
@@ -98,19 +110,23 @@ export function PointOfSale() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-          {sellableProducts.map((product) => {
-            const inCart = cart.find((line) => line.product.id === product.id)?.quantity ?? 0;
+          {sellableProducts.map(({ product, variant }) => {
+            const key = lineKey(product.id, variant?.id);
+            const inCart = cart.find((line) => lineKey(line.product.id, line.variant?.id) === key)?.quantity ?? 0;
+            const price = variant?.price ?? product.price;
+            const stock = variant?.availableStock ?? variant?.stock ?? product.availableStock ?? product.stock;
             return (
-              <button key={product.id} type="button" onClick={() => addToCart(product)} className="group cursor-pointer rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-brand/40 hover:shadow-[0_12px_35px_rgba(16,161,132,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <button key={key} type="button" onClick={() => addToCart(product, variant)} className="group cursor-pointer rounded-2xl border border-border bg-card p-4 text-left shadow-sm transition-[border-color,box-shadow] duration-200 hover:border-brand/40 hover:shadow-[0_12px_35px_rgba(16,161,132,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex size-12 items-center justify-center rounded-2xl bg-brand/10 text-xs font-bold tracking-wide text-brand">{categoryArt[product.category]}</div>
                   {inCart > 0 && <span className="inline-flex size-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">{inCart}</span>}
                 </div>
                 <p className="mt-5 font-semibold">{product.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{product.sku}</p>
+                {variant && <p className="mt-1 text-xs font-medium text-brand">{variant.title}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">{variant?.sku ?? product.sku}</p>
                 <div className="mt-4 flex items-end justify-between gap-3">
-                  <div><p className="text-xs text-muted-foreground">Sotuv narxi</p><p className="mt-1 text-sm font-semibold">{formatMoney(product.price)} UZS</p></div>
-                  <span className="text-xs font-medium text-muted-foreground">{product.stock} dona</span>
+                  <div><p className="text-xs text-muted-foreground">Sotuv narxi</p><p className="mt-1 text-sm font-semibold">{formatMoney(price)} UZS</p></div>
+                  <span className="text-xs font-medium text-muted-foreground">{stock} dona</span>
                 </div>
               </button>
             );
@@ -128,9 +144,9 @@ export function PointOfSale() {
 
         <div className="max-h-[320px] divide-y divide-border overflow-y-auto">
           {cart.map((line) => (
-            <div key={line.product.id} className="p-4">
-              <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{line.product.name}</p><p className="mt-1 text-xs text-muted-foreground">{formatMoney(line.product.price)} UZS</p></div><button type="button" onClick={() => setCart((current) => current.filter((item) => item.product.id !== line.product.id))} className="cursor-pointer text-muted-foreground hover:text-red-600" aria-label={`${line.product.name}ni savatdan olib tashlash`}><X className="size-4" /></button></div>
-              <div className="mt-3 flex items-center justify-between"><div className="inline-flex items-center rounded-xl border border-border"><button type="button" onClick={() => updateQuantity(line.product.id, -1)} className="inline-flex size-8 cursor-pointer items-center justify-center rounded-l-xl hover:bg-muted" aria-label="Miqdorni kamaytirish"><Minus className="size-3.5" /></button><span className="w-8 text-center text-sm font-semibold">{line.quantity}</span><button type="button" onClick={() => updateQuantity(line.product.id, 1)} className="inline-flex size-8 cursor-pointer items-center justify-center rounded-r-xl hover:bg-muted" aria-label="Miqdorni oshirish"><Plus className="size-3.5" /></button></div><p className="text-sm font-semibold">{formatMoney(line.product.price * line.quantity)} UZS</p></div>
+            <div key={lineKey(line.product.id, line.variant?.id)} className="p-4">
+              <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{line.product.name}</p>{line.variant && <p className="mt-1 text-xs font-medium text-brand">{line.variant.title}</p>}<p className="mt-1 text-xs text-muted-foreground">{formatMoney(line.variant?.price ?? line.product.price)} UZS</p></div><button type="button" onClick={() => setCart((current) => current.filter((item) => lineKey(item.product.id, item.variant?.id) !== lineKey(line.product.id, line.variant?.id)))} className="cursor-pointer text-muted-foreground hover:text-red-600" aria-label={`${line.product.name}ni savatdan olib tashlash`}><X className="size-4" /></button></div>
+              <div className="mt-3 flex items-center justify-between"><div className="inline-flex items-center rounded-xl border border-border"><button type="button" onClick={() => updateQuantity(line.product.id, line.variant?.id, -1)} className="inline-flex size-8 cursor-pointer items-center justify-center rounded-l-xl hover:bg-muted" aria-label="Miqdorni kamaytirish"><Minus className="size-3.5" /></button><span className="w-8 text-center text-sm font-semibold">{line.quantity}</span><button type="button" onClick={() => updateQuantity(line.product.id, line.variant?.id, 1)} className="inline-flex size-8 cursor-pointer items-center justify-center rounded-r-xl hover:bg-muted" aria-label="Miqdorni oshirish"><Plus className="size-3.5" /></button></div><p className="text-sm font-semibold">{formatMoney((line.variant?.price ?? line.product.price) * line.quantity)} UZS</p></div>
             </div>
           ))}
           {cart.length === 0 && <div className="px-5 py-12 text-center"><NexoraIcon name="sale" className="mx-auto size-9 text-brand" /><p className="mt-3 text-sm font-medium">Savat hozircha bo‘sh</p><p className="mt-1 text-xs text-muted-foreground">Chap tomondan mahsulot tanlang.</p></div>}

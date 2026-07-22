@@ -13,6 +13,6 @@ export async function POST(request: Request) {
     await clearSessionCookie();
     return Response.json({ ok: true });
   } catch (error) {
-    return apiError(error);
+    return apiError(error, request);
   }
 }

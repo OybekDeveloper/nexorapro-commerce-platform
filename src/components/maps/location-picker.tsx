@@ -1,10 +1,7 @@
 "use client";
 
 import { LocateFixed, Loader2, MapPin, Search, X } from "lucide-react";
-import type { Map as LeafletMap } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-import "leaflet/dist/leaflet.css";
 
 export type MapLocation = {
   latitude: number;
@@ -17,6 +14,97 @@ type SearchResult = MapLocation & { id: string; label: string };
 const DEFAULT_CENTER: [number, number] = [41.2995, 69.2401];
 const SELECT_ZOOM = 17;
 const BROWSE_ZOOM = 13;
+
+type YandexMapEvent = {
+  get: (name: string) => unknown;
+};
+
+type YandexMap = {
+  container: {
+    fitToViewport: () => void;
+  };
+  destroy: () => void;
+  events: {
+    add: (event: string, handler: (event: YandexMapEvent) => void) => void;
+  };
+  getCenter: () => number[];
+  getZoom: () => number;
+  panTo: (coordinates: [number, number], options?: Record<string, unknown>) => unknown;
+  setCenter: (
+    coordinates: [number, number],
+    zoom?: number,
+    options?: Record<string, unknown>,
+  ) => unknown;
+};
+
+type YandexMapsApi = {
+  Map: new (
+    container: HTMLElement,
+    state: Record<string, unknown>,
+    options?: Record<string, unknown>,
+  ) => YandexMap;
+  ready: (onSuccess: () => void, onError?: (error: unknown) => void) => void;
+};
+
+declare global {
+  interface Window {
+    ymaps?: YandexMapsApi;
+  }
+}
+
+let yandexMapsPromise: Promise<YandexMapsApi> | null = null;
+
+function loadYandexMaps() {
+  if (yandexMapsPromise) return yandexMapsPromise;
+
+  yandexMapsPromise = new Promise<YandexMapsApi>((resolve, reject) => {
+    const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_JS_API_KEY;
+    if (!apiKey) {
+      reject(new Error("Yandex Maps API kaliti topilmadi"));
+      return;
+    }
+
+    const resolveWhenReady = () => {
+      if (!window.ymaps) {
+        reject(new Error("Yandex Maps API yuklanmadi"));
+        return;
+      }
+      window.ymaps.ready(() => resolve(window.ymaps!), reject);
+    };
+
+    if (window.ymaps) {
+      resolveWhenReady();
+      return;
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-yandex-maps-api="true"]',
+    );
+    if (existingScript) {
+      existingScript.addEventListener("load", resolveWhenReady, { once: true });
+      existingScript.addEventListener(
+        "error",
+        () => reject(new Error("Yandex Maps API yuklanmadi")),
+        { once: true },
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(apiKey)}&lang=ru_RU`;
+    script.async = true;
+    script.dataset.yandexMapsApi = "true";
+    script.addEventListener("load", resolveWhenReady, { once: true });
+    script.addEventListener(
+      "error",
+      () => reject(new Error("Yandex Maps API yuklanmadi")),
+      { once: true },
+    );
+    document.head.appendChild(script);
+  });
+
+  return yandexMapsPromise;
+}
 
 async function reverseGeocode(coordinates: [number, number]) {
   const response = await fetch(
@@ -82,7 +170,7 @@ export function LocationPicker({
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletMap | null>(null);
+  const mapRef = useRef<YandexMap | null>(null);
   const onChangeRef = useRef(onChange);
   const requestRef = useRef(0);
   const lastPublishedRef = useRef<[number, number] | null>(
@@ -144,75 +232,84 @@ export function LocationPicker({
     [publish],
   );
 
-  // Initialise the Leaflet map once, client-side only.
+  // Initialise Yandex Maps once, client-side only. Address lookup stays on OSM.
   useEffect(() => {
     let cancelled = false;
-    let map: LeafletMap | null = null;
+    let map: YandexMap | null = null;
     let resizeObserver: ResizeObserver | null = null;
 
-    void import("leaflet").then(({ default: L }) => {
-      if (cancelled || !containerRef.current || mapRef.current) return;
+    void loadYandexMaps()
+      .then((ymaps) => {
+        if (cancelled || !containerRef.current || mapRef.current) return;
 
-      const start = initialValueRef.current;
-      const center: [number, number] = start
-        ? [start.latitude, start.longitude]
-        : DEFAULT_CENTER;
+        const start = initialValueRef.current;
+        const center: [number, number] = start
+          ? [start.latitude, start.longitude]
+          : DEFAULT_CENTER;
 
-      map = L.map(containerRef.current, {
-        center,
-        zoom: start ? SELECT_ZOOM : BROWSE_ZOOM,
-        zoomControl: !readOnly,
-        attributionControl: true,
-        dragging: !readOnly,
-        scrollWheelZoom: !readOnly,
-        doubleClickZoom: !readOnly,
-        boxZoom: !readOnly,
-        keyboard: !readOnly,
-        touchZoom: !readOnly,
+        map = new ymaps.Map(
+          containerRef.current,
+          {
+            center,
+            zoom: start ? SELECT_ZOOM : BROWSE_ZOOM,
+            controls: readOnly ? [] : ["zoomControl"],
+            behaviors: readOnly ? [] : ["default"],
+            type: "yandex#map",
+          },
+          {
+            suppressMapOpenBlock: true,
+          },
+        );
+
+        mapRef.current = map;
+
+        if (!readOnly) {
+          map.events.add("actionbegin", () => setDragging(true));
+          map.events.add("actionend", () => {
+            const centerCoordinates = mapRef.current?.getCenter();
+            if (!centerCoordinates) return;
+            setDragging(false);
+            const coordinates: [number, number] = [
+              centerCoordinates[0],
+              centerCoordinates[1],
+            ];
+            const known = skipResolveRef.current;
+            if (known !== null) {
+              skipResolveRef.current = null;
+              publish(coordinates, known);
+            } else {
+              void resolveCenter(coordinates);
+            }
+          });
+          // Tap-to-recenter: brings the picked spot under the fixed centre pin.
+          map.events.add("click", (event) => {
+            const coordinates = event.get("coords");
+            if (!Array.isArray(coordinates) || coordinates.length < 2) return;
+            setResults([]);
+            void mapRef.current?.panTo([coordinates[0], coordinates[1]], {
+              duration: 350,
+              flying: false,
+            });
+          });
+        }
+
+        // The checkout panel animates in, so recompute the real viewport size.
+        resizeObserver = new ResizeObserver(() => map?.container.fitToViewport());
+        resizeObserver.observe(containerRef.current);
+        window.setTimeout(() => map?.container.fitToViewport(), 60);
+
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoading(false);
+        setError("Yandex xaritasi yuklanmadi. API kalitini tekshiring.");
       });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      }).addTo(map);
-
-      mapRef.current = map;
-
-      if (!readOnly) {
-        map.on("movestart", () => setDragging(true));
-        map.on("moveend", () => {
-          const c = mapRef.current?.getCenter();
-          if (!c) return;
-          setDragging(false);
-          const coordinates: [number, number] = [c.lat, c.lng];
-          const known = skipResolveRef.current;
-          if (known !== null) {
-            skipResolveRef.current = null;
-            publish(coordinates, known);
-          } else {
-            void resolveCenter(coordinates);
-          }
-        });
-        // Tap-to-recenter: brings the picked spot under the fixed centre pin.
-        map.on("click", (event) => {
-          setResults([]);
-          mapRef.current?.panTo(event.latlng, { animate: true, duration: 0.35 });
-        });
-      }
-
-      // Leaflet needs a real size; the checkout panel animates in, so recompute.
-      resizeObserver = new ResizeObserver(() => map?.invalidateSize());
-      resizeObserver.observe(containerRef.current);
-      window.setTimeout(() => map?.invalidateSize(), 60);
-
-      setLoading(false);
-    });
 
     return () => {
       cancelled = true;
       resizeObserver?.disconnect();
-      map?.remove();
+      map?.destroy();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -228,9 +325,11 @@ export function LocationPicker({
     }
     lastPublishedRef.current = [valueLatitude, valueLongitude];
     skipResolveRef.current = value?.address ?? null;
-    map.setView([valueLatitude, valueLongitude], readOnly ? SELECT_ZOOM : Math.max(map.getZoom(), SELECT_ZOOM), {
-      animate: !readOnly,
-    });
+    void map.setCenter(
+      [valueLatitude, valueLongitude],
+      readOnly ? SELECT_ZOOM : Math.max(map.getZoom(), SELECT_ZOOM),
+      { duration: readOnly ? 0 : 350 },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valueLatitude, valueLongitude, readOnly]);
 
@@ -242,10 +341,10 @@ export function LocationPicker({
     autoLocateDoneRef.current = true;
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        mapRef.current?.setView(
+        void mapRef.current?.setCenter(
           [position.coords.latitude, position.coords.longitude],
           SELECT_ZOOM,
-          { animate: true },
+          { duration: 350 },
         );
       },
       () => undefined,
@@ -294,8 +393,8 @@ export function LocationPicker({
       longitude: result.longitude,
       address: result.address,
     });
-    mapRef.current?.setView([result.latitude, result.longitude], SELECT_ZOOM, {
-      animate: true,
+    void mapRef.current?.setCenter([result.latitude, result.longitude], SELECT_ZOOM, {
+      duration: 350,
     });
   };
 
@@ -319,10 +418,10 @@ export function LocationPicker({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false);
-        mapRef.current?.setView(
+        void mapRef.current?.setCenter(
           [position.coords.latitude, position.coords.longitude],
           SELECT_ZOOM,
-          { animate: true },
+          { duration: 350 },
         );
       },
       () => {
@@ -415,7 +514,7 @@ export function LocationPicker({
         className="relative overflow-hidden rounded-2xl border border-black/10 bg-zinc-100"
         style={{ height }}
       >
-        <div ref={containerRef} className="h-full w-full [&_.leaflet-control-attribution]:!text-[10px]" />
+        <div ref={containerRef} className="h-full w-full" />
 
         {!loading && <CenterPin lifted={dragging} />}
 
@@ -439,7 +538,16 @@ export function LocationPicker({
 
       {!readOnly && (
         <p className="text-xs leading-5 text-zinc-500">
-          Xaritani suring — nuqta doim markazda tanlanadi. Qidiruv va xarita{" "}
+          Xaritani suring — nuqta doim markazda tanlanadi. Xarita{" "}
+          <a
+            href="https://yandex.com/maps"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2"
+          >
+            © Yandex Maps
+          </a>
+          , manzil qidiruvi esa{" "}
           <a
             href="https://www.openstreetmap.org/copyright"
             target="_blank"
@@ -448,7 +556,7 @@ export function LocationPicker({
           >
             © OpenStreetMap
           </a>{" "}
-          asosida.
+          asosida ishlaydi.
         </p>
       )}
     </div>

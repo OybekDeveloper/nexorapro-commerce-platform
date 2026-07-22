@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getCachedStorefrontProduct(slug);
-  if (!product || !product.visibleOnStorefront || product.status !== "published") notFound();
+  if (!product) notFound();
   return (
     <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
       <StoreHeader />

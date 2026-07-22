@@ -59,75 +59,6 @@ const statusMeta: Record<OrderStatus, { label: string; className: string }> = {
   },
 };
 
-const seedOrders: Order[] = [
-  {
-    id: "#NX-1062",
-    customer: "Sardor Karimov",
-    phone: "+998 90 123 45 67",
-    items: "iPhone 17 Pro · 1 dona",
-    total: "20 999 000",
-    channel: "Online",
-    payment: "Karta",
-    status: "new",
-    time: "10:42",
-  },
-  {
-    id: "#NX-1061",
-    customer: "Madina Islomova",
-    phone: "+998 93 612 08 21",
-    items: "AirPods Pro 3 · 2 dona",
-    total: "6 998 000",
-    channel: "Online",
-    payment: "Click",
-    status: "paid",
-    time: "10:18",
-  },
-  {
-    id: "#NX-1060",
-    customer: "Azizbek Tursunov",
-    phone: "+998 99 440 18 12",
-    items: "MacBook Air 13 M5 · 1 dona",
-    total: "17 999 000",
-    channel: "POS",
-    payment: "Karta",
-    status: "packing",
-    time: "09:54",
-  },
-  {
-    id: "#NX-1059",
-    customer: "Kamola Rahimova",
-    phone: "+998 97 221 77 03",
-    items: "iPad Air 11 M4 · 1 dona",
-    total: "10 999 000",
-    channel: "Online",
-    payment: "Payme",
-    status: "shipping",
-    time: "09:31",
-  },
-  {
-    id: "#NX-1058",
-    customer: "Bekzod Aliyev",
-    phone: "+998 91 663 20 40",
-    items: "iPhone 17 Pro Max · 1 dona",
-    total: "26 499 000",
-    channel: "POS",
-    payment: "Naqd",
-    status: "completed",
-    time: "Kecha",
-  },
-  {
-    id: "#NX-1057",
-    customer: "Nilufar Sodiqova",
-    phone: "+998 95 455 71 90",
-    items: "MacBook Air 15 M5 · 1 dona",
-    total: "21 499 000",
-    channel: "Online",
-    payment: "Karta",
-    status: "cancelled",
-    time: "Kecha",
-  },
-];
-
 const nextStatus: Partial<Record<OrderStatus, OrderStatus>> = {
   new: "paid",
   paid: "packing",
@@ -167,7 +98,7 @@ function toDisplayOrder(order: CommerceOrder): Order {
 }
 
 export function OrdersWorkspace() {
-  const [orders, setOrders] = useState(seedOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | OrderStatus>("all");
   const [selected, setSelected] = useState<Order | null>(null);

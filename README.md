@@ -12,7 +12,7 @@ role-based administration — built as one production-minded Next.js application
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![GitHub Actions](https://img.shields.io/badge/deploy-GitHub_Actions-2088ff?style=for-the-badge&logo=githubactions&logoColor=white)](.github/workflows/deploy-production.yml)
 
-[Live storefront](https://nexorapro.uz) · [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Roadmap](docs/ROADMAP.md)
+[Live storefront](https://nexorapro.uz) · [API reference](docs/API.md) · [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Roadmap](docs/ROADMAP.md)
 
 </div>
 
@@ -40,10 +40,10 @@ client-side state.
 | --- | --- | --- |
 | Premium responsive storefront | Executive dashboard and analytics | Next.js App Router and Route Handlers |
 | Searchable product catalog | Product publishing and archive lifecycle | Persistent SQLite in WAL mode |
-| Product details and video showcase | POS sale with atomic stock deduction | Database-backed sessions and RBAC |
-| Persistent cart and checkout | Inventory receipts and movement ledger | Zod validation and typed repositories |
+| Product details and video showcase | Variant/media CRUD and bulk actions | Database-backed sessions and RBAC |
+| Persistent cart and checkout | Inventory ledger and reservations | Structured errors, Zod and typed DAL |
 | Map-based delivery location | Order status workflow and CSV export | Tagged cache invalidation |
-| Account and private order history | UZ/RU/EN localization workflow | GitHub Actions VPS deployment |
+| Account and private order history | Date-range sales/inventory reports | Atomic migrations, backup and audit log |
 
 ## Admin workspace
 
@@ -61,8 +61,9 @@ Customer storefront ─┐
                      ├─ Next.js 16 application ─ Route Handlers ─ repositories ─ SQLite
 Admin workspace ─────┘           │                    │                 │
                                  │                    │                 ├─ users + sessions
-                                 │                    │                 ├─ products + stock
-                                 │                    │                 └─ orders + movements
+                                 │                    │                 ├─ products + variants + media
+                                 │                    │                 ├─ stock + reservations + ledger
+                                 │                    │                 └─ orders + audit logs
                                  │                    └─ Zod + RBAC + cache invalidation
                                  └─ React 19 + Tailwind CSS + GSAP
 ```
@@ -71,10 +72,12 @@ Important implementation decisions:
 
 - money and stock calculations are validated on the server;
 - order creation and inventory deduction run in one transaction;
+- cancelled orders restore product or variant stock in the same transaction;
 - passwords are hashed with bcrypt and raw session tokens are never stored;
 - customer and admin data are excluded from shared caches;
-- public product and analytics caches are invalidated after mutations;
-- the SQLite database lives outside deployment releases and survives rollouts.
+- public product and server-side report caches are invalidated after mutations;
+- schema migrations are versioned and create a pre-migration SQLite snapshot;
+- database and uploaded media live outside releases and survive rollouts.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for domain boundaries and the
 long-term data model.
@@ -88,7 +91,7 @@ long-term data model.
 | Forms and validation | React Hook Form, Zod |
 | Data and authentication | better-sqlite3, bcrypt, opaque HttpOnly sessions |
 | Tables and analytics | TanStack Table, Recharts |
-| Motion and maps | GSAP, Leaflet, OpenStreetMap, Nominatim |
+| Motion and maps | GSAP, Yandex Maps, OpenStreetMap Nominatim geocoding |
 | Production | GitHub Actions, Next.js standalone output, PM2, Nginx, Let's Encrypt |
 
 ## Working routes
@@ -100,11 +103,11 @@ long-term data model.
 | `/login`, `/account` | Customer authentication and private order history |
 | `/admin-login` | Separate administrator entry point |
 | `/admin` | Business overview and live database totals |
-| `/admin/products` | Product creation, publishing, localization, and archive actions |
+| `/admin/products` | Product CRUD, variants, image upload, bulk lifecycle, CSV import/export |
 | `/admin/sales` | Point of sale and stock-aware order creation |
-| `/admin/inventory` | Stock receipt and inventory movement history |
+| `/admin/inventory` | Variant stock, reservations, receipts, ledger, valuation and low-stock export |
 | `/admin/orders` | Order search, details, and status transitions |
-| `/admin/analytics` | Product metrics and CSV export |
+| `/admin/analytics` | Real date-range revenue, profit, AOV, daily, product and channel reports |
 | `/admin/localization` | UZ/RU/EN completeness workflow |
 | `/api/*` | Authenticated REST-style Route Handler API |
 
@@ -122,6 +125,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The database is created
 automatically at `data/nexora.db`.
+
+`UPLOAD_DIR` must be an absolute writable path. In production it is
+`/var/www/nexorapro/shared/uploads`; Nginx serves `/uploads/*` directly with an
+immutable cache policy.
 
 Production never uses the development admin fallback. Set a unique
 `ADMIN_EMAIL` and `ADMIN_PASSWORD` before the first production start.
@@ -145,7 +152,15 @@ standalone release.
 ```bash
 npm run lint
 npm run build
+npm test
+npm run benchmark:db
 ```
+
+The integration suite starts the production server against a temporary SQLite
+database and covers authentication, structured errors, product variants/media,
+optimistic locking, inventory reservations, reports, import/export, bulk actions,
+and soft deletion. The deterministic DB benchmark exercises 10,000 products,
+5,000 orders, and 15,000 order lines.
 
 The interface includes keyboard focus states, a skip link, semantic labels,
 reduced-motion handling, responsive admin fallbacks, and layouts verified at
@@ -156,7 +171,7 @@ desktop and 375 px widths.
 Every push to `main` runs the production workflow:
 
 1. install locked dependencies on a GitHub-hosted Ubuntu runner;
-2. run ESLint and build the Next.js standalone server;
+2. run ESLint, build the Next.js standalone server, and execute integration tests;
 3. verify that no `.env` or SQLite files entered the release;
 4. upload the compressed runtime to the VPS over pinned-key SSH;
 5. atomically activate the release and reload one PM2 process;
@@ -168,11 +183,13 @@ suitable for the initial 1 GB instance. Full setup instructions are in
 
 ## Current scope
 
-This repository is a portfolio MVP, not a live payment processor. Checkout
-creates real local orders, while payment capture, media upload storage,
-password recovery, email verification, refunds, supplier purchasing, audit
-logs, and external delivery integrations remain roadmap work. Multi-instance
-deployment requires PostgreSQL and formal migrations.
+This repository is a portfolio commerce platform, not a live payment processor.
+Checkout creates transactional local orders; product media, variants, stock
+reservations, imports, reports, audit logs and backups are implemented. Payment
+capture, password recovery, email verification, refunds, supplier purchasing,
+and external delivery integrations remain roadmap work. Multi-instance
+deployment should move durable data to PostgreSQL/object storage and use a
+distributed cache only after measurements justify it.
 
 Product imagery and linked showcase media belong to their respective owners and
 are used for portfolio demonstration. Prices and inventory are illustrative.

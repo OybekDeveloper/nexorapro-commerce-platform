@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { apiError, HttpError } from "@/server/http";
+import { apiError, enforceRateLimit, HttpError } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +130,7 @@ function fetchNominatim<T>(url: URL) {
 
 export async function GET(request: Request) {
   try {
+    enforceRateLimit(request, "geocode", 60, 60_000);
     const params = new URL(request.url).searchParams;
     const query = params.get("q");
 
@@ -190,6 +191,6 @@ export async function GET(request: Request) {
     writeCache(key, payload);
     return Response.json(payload);
   } catch (error) {
-    return apiError(error);
+    return apiError(error, request);
   }
 }

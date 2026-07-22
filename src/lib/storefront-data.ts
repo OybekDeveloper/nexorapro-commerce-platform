@@ -8,6 +8,19 @@ export type StoreProductVideo = {
   sourceUrl: string;
 };
 
+export type StoreProductVariant = {
+  id: string;
+  title: string;
+  sku: string;
+  price: number;
+  compareAtPrice?: number;
+  stock: number;
+  reservedStock?: number;
+  availableStock?: number;
+  status: "active" | "disabled";
+  options: Record<string, string>;
+};
+
 export type StoreProduct = {
   id: string;
   slug: string;
@@ -21,11 +34,14 @@ export type StoreProduct = {
   compareAtPrice?: number;
   badge?: string;
   stock: number;
+  reservedStock?: number;
+  availableStock?: number;
   rating: number;
   reviews: number;
   colors: string[];
   specs: string[];
   featured: boolean;
+  variants?: StoreProductVariant[];
   languages?: import("@/lib/types").ProductLanguage[];
   translations?: Partial<Record<import("@/lib/types").ProductLanguage, import("@/lib/types").ProductTranslation>>;
 };

@@ -22,42 +22,41 @@ The storefront and admin workspace share product, pricing, inventory, localizati
 
 ## Core domains
 
-### Identity and tenancy
+### Identity and audit
 
-- `Organization`: the business that owns data
-- `Store`: online or physical sales channel
-- `Location`: warehouse or branch
-- `User`, `Role`, `Permission`, `Membership`: organization-scoped access
-- `AuditLog`: actor, action, entity, before/after snapshot, timestamp
+- `User`: customer or administrator with a bcrypt password hash
+- `Session`: SHA-256 hash of an opaque browser token with expiry and device metadata
+- `LoginAttempt`: database-backed brute-force lock state
+- `AuditLog`: actor, action, entity, before/after snapshot, request ID, IP, timestamp
 
-Every business record carries `organizationId`. Authorization must validate organization membership before querying or mutating data.
+The current deployment is single-business. Organization/membership boundaries
+are a future multi-tenant concern and are not implied by the current schema.
 
 ### Catalog and localization
 
 - `Product`: stable commercial identity and lifecycle status
-- `ProductTranslation`: localized name, description, slug, and SEO fields
-- `ProductVariant`: SKU, attributes, barcode, weight, media, and status
-- `Category`, `Collection`, `MediaAsset`
-- `ChannelPublication`: storefront visibility, publish window, and market
+- `ProductTranslation`: localized name, description, image alt text, badge, specs and video labels
+- `ProductVariant`: SKU, option map, barcode, price, cost, stock, status and version
+- `ProductMedia`: durable image/video metadata, ordering and primary selection
+- soft deletion and optimistic product/variant versions
 
 Translations are stored as separate records rather than JSON so completeness, review status, and locale-specific search can be managed explicitly.
 
 ### Pricing and inventory
 
-- `PriceList`, `Price`, `DiscountRule`
-- `Supplier`, `PurchaseOrder`, `GoodsReceipt`
-- `InventoryItem`, `StockMovement`, `StockReservation`
+- `InventoryLocation`, `InventoryMovement`, `InventoryReservation`
 
-Inventory uses an append-only movement ledger. The current balance is derived or cached, while the ledger preserves an auditable history of receipts, sales, returns, transfers, and corrections.
+Inventory uses an append-only movement ledger and transactionally maintained
+product/variant balances. Reservations reduce available stock without changing
+on-hand stock. Idempotency keys prevent duplicate adjustments.
 
 ### Commerce
 
-- `Customer`, `Address`
-- `Cart`, `CartItem`
-- `Order`, `OrderItem`, `OrderStatusHistory`
-- `Payment`, `Shipment`, `Return`, `Refund`
+- `Order`, immutable `OrderItem` price/cost/name/SKU snapshots
+- validated status transitions and cancellation stock restoration
+- customer account history and admin/POS order workflows
 
-Money is stored in minor units using integers; currency is stored explicitly. Orders copy product names, SKUs, prices, and tax data into immutable line snapshots.
+Money is stored as whole UZS integer values. Orders copy product names, variant labels, SKUs, cost and sale prices into immutable line snapshots. Currency conversion, tax calculation and an external payment gateway are deliberately outside the current scope.
 
 ## Application boundaries
 
@@ -71,22 +70,33 @@ data/nexora.db        Ignored local persistent database created at runtime
 
 ## Mutation rules
 
-Current commerce mutations follow steps 3–6. Production mutations will follow the complete sequence:
+Current commerce mutations follow this complete sequence:
 
 1. Authenticate the user.
-2. Resolve organization and role permissions.
+2. Re-check role permissions at the Route Handler boundary.
 3. Validate input with Zod.
 4. Execute a transaction through a domain service.
 5. Write an audit event.
 6. Revalidate affected storefront/admin routes.
-7. Queue slow external work such as media processing or notifications.
+7. Keep slow external work out of the request path (future queue integrations).
+
+## Cache decision
+
+Storefront products use Next.js tagged Data Cache with explicit invalidation;
+admin/customer reads are private and uncached. The reproducible benchmark uses
+10,000 products, 5,000 orders and 15,000 lines: indexed admin pagination is
+sub-millisecond and the optimized 50-line product lookup is a fixed query.
+Redis is intentionally not deployed on the single 1 GB, single-process VPS: it
+would add a network hop, memory pressure and a second invalidation system without
+removing the measured bottleneck. Redis becomes appropriate for multiple app
+instances, shared rate limits, queues, or a measured cross-process cache need.
 
 ## Non-functional requirements
 
 - Accessible keyboard navigation and WCAG AA contrast
 - Mobile layouts at 375px and data-table fallback cards
-- Idempotent payment and stock mutations
-- Structured logs, error tracking, and business metrics
-- Point-in-time database recovery and media backups
+- Idempotent manual stock adjustments and atomic order/stock mutations
+- Structured API errors, request IDs, audit history, and business reports
+- Pre-migration SQLite snapshots and explicit restore tooling
 - Rate limiting, secure headers, validation, and secret isolation
-- Integration tests for inventory, checkout, refunds, and RBAC
+- Integration tests for auth, catalog, variants/media, inventory, reports and RBAC
