@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { type StoreProduct, type StoreProductVariant } from "@/lib/storefront-data";
 import type { AuthUser } from "@/lib/auth";
@@ -29,6 +29,7 @@ type StoreContextValue = {
 const StoreContext = createContext<StoreContextValue | null>(null);
 const CART_KEY = "nexorapro-cart-v1";
 const LOCALE_KEY = "nexorapro-locale-v1";
+export const AUTH_SESSION_CHANGED_EVENT = "nexorapro:auth-session-changed";
 const cartKey = (productId: string, variantId?: string) => `${productId}:${variantId ?? ""}`;
 
 function parseSavedCart(value: string): CartItem[] {
@@ -45,9 +46,18 @@ function parseSavedCart(value: string): CartItem[] {
 
 export function StoreProvider({ children, initialProducts = [], initialUser = null }: { children: React.ReactNode; initialProducts?: StoreProduct[]; initialUser?: AuthUser | null }) {
   const [locale, setLocaleState] = useState<StoreLocale>("UZ");
-  const [sourceProducts, setSourceProducts] = useState<StoreProduct[]>(initialProducts);
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const refreshUser = useCallback(() => {
+    void fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ user: AuthUser | null }> : null)
+      .then((payload) => {
+        if (!payload) return;
+        startTransition(() => setUser(payload.user));
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -67,22 +77,31 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
 
   useEffect(() => {
     let active = true;
-    const refresh = () => fetch("/api/products?scope=storefront", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() as Promise<{ products: StoreProduct[] }> : null)
-      .then((payload) => { if (active && payload) setSourceProducts(payload.products); })
-      .catch(() => undefined);
-    // SSR already provides fresh products, so skip the redundant refetch on
-    // load (it re-renders the tree during the LCP window). Refresh only when
-    // the tab regains focus, and after the page has gone idle.
-    const onFocus = () => void refresh();
-    const idle = window.setTimeout(() => { if (active) void refresh(); }, 4000);
-    window.addEventListener("focus", onFocus);
+    const idle = window.setTimeout(() => {
+      void fetch("/api/auth/me", { cache: "no-store" })
+        .then((response) => response.ok ? response.json() as Promise<{ user: AuthUser | null }> : null)
+        .then((payload) => {
+          if (!active || !payload) return;
+          startTransition(() => setUser(payload.user));
+        })
+        .catch(() => undefined);
+    }, 1200);
     return () => {
       active = false;
       window.clearTimeout(idle);
+    };
+  }, [initialUser]);
+
+  useEffect(() => {
+    const onAuthChanged = () => refreshUser();
+    const onFocus = () => refreshUser();
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onAuthChanged);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onAuthChanged);
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [refreshUser]);
 
   useEffect(() => {
     if (hydrated) window.localStorage.setItem(CART_KEY, JSON.stringify(cartItems));
@@ -98,8 +117,8 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
   }, [locale]);
 
   const products = useMemo(
-    () => sourceProducts.map((product) => localizeProduct(product, locale)),
-    [locale, sourceProducts],
+    () => initialProducts.map((product) => localizeProduct(product, locale)),
+    [initialProducts, locale],
   );
 
   const addToCart = useCallback((productId: string, quantity = 1, variantId?: string) => {
@@ -153,7 +172,7 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
   }), [cartItems, products]);
 
   const value = useMemo<StoreContextValue>(() => ({
-    user: initialUser,
+    user,
     locale,
     setLocale,
     products,
@@ -165,7 +184,7 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
     updateQuantity,
     removeFromCart: (productId, variantId) => setCartItems((current) => current.filter((item) => cartKey(item.productId, item.variantId) !== cartKey(productId, variantId))),
     clearCart: () => setCartItems([]),
-  }), [addToCart, cartItems, cartLines, initialUser, locale, products, updateQuantity]);
+  }), [addToCart, cartItems, cartLines, locale, products, updateQuantity, user]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

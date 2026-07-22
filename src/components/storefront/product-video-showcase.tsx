@@ -30,6 +30,7 @@ export function ProductVideoShowcase({ media, productName }: { media: StoreProdu
 
     const stage = section.querySelector<HTMLElement>("[data-video-stage]");
     const copy = section.querySelector<HTMLElement>("[data-video-copy]");
+    const compact = prefersCompactMotion();
     const allowAutoMotion = canUseStoreMotion() && !prefersLowDataMotion();
 
     const observer = new IntersectionObserver(([entry]) => {
@@ -43,7 +44,6 @@ export function ProductVideoShowcase({ media, productName }: { media: StoreProdu
       if (allowAutoMotion && !hasAnimatedRef.current && stage) {
         hasAnimatedRef.current = true;
         void loadGsap().then((gsap) => {
-          const compact = prefersCompactMotion();
           gsap.fromTo(stage, {
             autoAlpha: 0.68,
             y: compact ? 18 : 30,
@@ -69,7 +69,7 @@ export function ProductVideoShowcase({ media, productName }: { media: StoreProdu
         }).catch(() => undefined);
       }
 
-      if (allowAutoMotion && !userPausedRef.current) {
+      if (allowAutoMotion && !compact && !userPausedRef.current) {
         void video.play().catch(() => undefined);
       }
     }, { threshold: 0.45, rootMargin: "0px 0px -5% 0px" });

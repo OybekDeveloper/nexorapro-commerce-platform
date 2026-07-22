@@ -7,6 +7,8 @@ import { StoreHeader } from "@/components/storefront/store-header";
 import { storefrontProducts } from "@/lib/storefront-data";
 import { getCachedStorefrontProduct } from "@/server/cached-commerce";
 
+export const revalidate = 300;
+
 export function generateStaticParams() { return storefrontProducts.map((product) => ({ slug: product.slug })); }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

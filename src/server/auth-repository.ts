@@ -22,6 +22,12 @@ export function createCustomer(name: string, email: string, password: string): A
   return { id, name: name.trim(), email: cleanEmail, role: "customer" };
 }
 
+export function customerEmailExists(email: string) {
+  const cleanEmail = normalizeEmail(email);
+  const row = database.prepare("SELECT 1 FROM users WHERE email = ? LIMIT 1").get(cleanEmail);
+  return Boolean(row);
+}
+
 export function authenticateUser(email: string, password: string, requiredRole?: UserRole): AuthUser | null {
   const cleanEmail = normalizeEmail(email);
   const row = database.prepare("SELECT id, name, email, role, password_hash FROM users WHERE email = ?").get(cleanEmail) as UserRow | undefined;

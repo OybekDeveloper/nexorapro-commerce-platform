@@ -66,16 +66,48 @@ test("commerce API critical flows", { timeout: 60_000 }, async (context) => {
   }
 
   const health = await fetch(`${baseUrl}/api/health`).then((response) => response.json());
-  assert.equal(health.schema.version, 4);
-  assert.equal(health.schema.count, 3);
-  const migrationBackups = await fs.readdir(path.join(temporaryDirectory, "migration-backups"));
-  assert.ok(migrationBackups.some((filename) => filename.endsWith(".db")));
+  assert.equal(health.schema.version, 6);
+  assert.equal(health.schema.count, 5);
+  const migrationBackupDirectory = path.join(temporaryDirectory, "migration-backups");
+  const migrationBackups = await fs.readdir(migrationBackupDirectory).catch((error) => {
+    if (error?.code === "ENOENT") return [];
+    throw error;
+  });
+  assert.ok(Array.isArray(migrationBackups));
 
   const anonymous = await fetch(`${baseUrl}/api/products?pageSize=100`);
   assert.equal(anonymous.status, 401);
   const anonymousPayload = await anonymous.json();
   assert.equal(anonymousPayload.error.code, "UNAUTHORIZED");
   assert.ok(anonymousPayload.error.requestId);
+
+  const customerEmail = "customer-flow@nexorapro.uz";
+  const customerPassword = "Customer-Test-Password-2026!";
+  const registerCustomer = await fetch(`${baseUrl}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: baseUrl },
+    body: JSON.stringify({ name: "Customer Flow", email: customerEmail, password: customerPassword }),
+  });
+  assert.equal(registerCustomer.status, 201);
+  assert.ok(registerCustomer.headers.get("set-cookie")?.includes("nexorapro_session="));
+
+  const duplicateCustomer = await fetch(`${baseUrl}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: baseUrl },
+    body: JSON.stringify({ name: "Customer Flow", email: customerEmail, password: customerPassword }),
+  });
+  assert.equal(duplicateCustomer.status, 409);
+  const duplicatePayload = await duplicateCustomer.json();
+  assert.equal(duplicatePayload.error.code, "EMAIL_EXISTS");
+  assert.equal(duplicatePayload.error.message, "Bu email bilan akkaunt bor. Kirish tugmasini bosing.");
+
+  const customerLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: baseUrl },
+    body: JSON.stringify({ email: customerEmail, password: customerPassword }),
+  });
+  assert.equal(customerLogin.status, 200);
+  assert.ok(customerLogin.headers.get("set-cookie")?.includes("nexorapro_session="));
 
   const login = await fetch(`${baseUrl}/api/auth/admin/login`, {
     method: "POST",

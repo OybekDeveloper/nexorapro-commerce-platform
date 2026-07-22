@@ -3,7 +3,6 @@ import { GeistSans } from "geist/font/sans";
 
 import { StoreProvider } from "@/components/storefront/store-provider";
 import { StorefrontMotionShell } from "@/components/storefront/storefront-motion-shell";
-import { getOptionalUser } from "@/server/auth";
 import { getCachedStorefrontProducts } from "@/server/cached-commerce";
 
 import "./globals.css";
@@ -33,7 +32,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [products, user] = await Promise.all([getCachedStorefrontProducts(), getOptionalUser()]);
+  const products = await getCachedStorefrontProducts();
   return (
     <html
       lang="uz"
@@ -42,7 +41,7 @@ export default async function RootLayout({
       className={`${GeistSans.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="flex min-h-full flex-col">
-        <StoreProvider initialProducts={products} initialUser={user}>
+        <StoreProvider initialProducts={products}>
           <StorefrontMotionShell>{children}</StorefrontMotionShell>
         </StoreProvider>
       </body>

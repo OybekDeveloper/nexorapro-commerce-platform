@@ -14,7 +14,7 @@ export const COMMERCE_CACHE_TAGS = {
 
 export const getCachedStorefrontProducts = unstable_cache(
   async () => listProducts({ storefrontOnly: true }).map(toStorefrontProduct),
-  ["storefront-products-v1"],
+  ["storefront-products-v2"],
   { tags: [COMMERCE_CACHE_TAGS.products], revalidate: 300 },
 );
 
@@ -23,7 +23,7 @@ export const getCachedStorefrontProduct = unstable_cache(
     const product = getProduct(slug);
     return product?.status === "published" && product.visibleOnStorefront ? toStorefrontProduct(product) : null;
   },
-  ["storefront-product-v1"],
+  ["storefront-product-v2"],
   { tags: [COMMERCE_CACHE_TAGS.products], revalidate: 300 },
 );
 
