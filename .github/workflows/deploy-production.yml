@@ -1,0 +1,147 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: nexorapro-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24"
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build production bundle
+        env:
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXORAPRO_DB_PATH: ${{ runner.temp }}/nexorapro-build.db
+        run: npm run build
+
+      - name: Package standalone application
+        env:
+          RELEASE_DIR: ${{ runner.temp }}/nexorapro-release
+          ARCHIVE_PATH: ${{ runner.temp }}/nexorapro-release.tgz
+        run: |
+          set -euo pipefail
+          mkdir -p "$RELEASE_DIR/.next"
+          cp -a .next/standalone/. "$RELEASE_DIR/"
+          cp -a .next/static "$RELEASE_DIR/.next/static"
+          cp -a public "$RELEASE_DIR/public"
+          cp -a deploy "$RELEASE_DIR/deploy"
+
+          if find "$RELEASE_DIR" -type f \
+            \( -name '.env*' -o -name '*.db' -o -name '*.db-*' -o -name '*.sqlite' -o -name '*.sqlite-*' \) \
+            | grep -q .
+          then
+            echo "Refusing to package an environment or SQLite data file." >&2
+            exit 1
+          fi
+
+          tar -C "$RELEASE_DIR" -czf "$ARCHIVE_PATH" .
+
+      - name: Validate deployment secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          PRODUCTION_ENV_FILE: ${{ secrets.PRODUCTION_ENV_FILE }}
+        run: |
+          set -euo pipefail
+          for secret_name in \
+            VPS_HOST \
+            VPS_USER \
+            VPS_SSH_PRIVATE_KEY \
+            VPS_KNOWN_HOSTS \
+            NEXT_PUBLIC_APP_URL \
+            PRODUCTION_ENV_FILE
+          do
+            if [ -z "${!secret_name}" ]; then
+              echo "Missing required GitHub secret: $secret_name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Configure SSH
+        env:
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$VPS_SSH_PRIVATE_KEY" | tr -d '\r' > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 644 "$HOME/.ssh/known_hosts"
+
+      - name: Prepare production environment file
+        env:
+          PRODUCTION_ENV_FILE: ${{ secrets.PRODUCTION_ENV_FILE }}
+          ENV_PATH: ${{ runner.temp }}/nexorapro.env
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$PRODUCTION_ENV_FILE" > "$ENV_PATH"
+          chmod 600 "$ENV_PATH"
+
+      - name: Upload release
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          ARCHIVE_PATH: ${{ runner.temp }}/nexorapro-release.tgz
+          ENV_PATH: ${{ runner.temp }}/nexorapro.env
+        run: |
+          set -euo pipefail
+          SSH_PORT="${VPS_PORT:-22}"
+          RELEASE_ID="${GITHUB_RUN_ID}-${GITHUB_SHA}"
+          REMOTE_PREFIX="/tmp/nexorapro-${RELEASE_ID}"
+
+          scp -P "$SSH_PORT" "$ARCHIVE_PATH" \
+            "${VPS_USER}@${VPS_HOST}:${REMOTE_PREFIX}.tgz"
+          scp -P "$SSH_PORT" "$ENV_PATH" \
+            "${VPS_USER}@${VPS_HOST}:${REMOTE_PREFIX}.env"
+          scp -P "$SSH_PORT" deploy/activate-release.sh \
+            "${VPS_USER}@${VPS_HOST}:${REMOTE_PREFIX}.sh"
+
+      - name: Activate release
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          SSH_PORT="${VPS_PORT:-22}"
+          RELEASE_ID="${GITHUB_RUN_ID}-${GITHUB_SHA}"
+          REMOTE_SCRIPT="/tmp/nexorapro-${RELEASE_ID}.sh"
+
+          ssh -p "$SSH_PORT" "${VPS_USER}@${VPS_HOST}" \
+            "bash '$REMOTE_SCRIPT' '$RELEASE_ID'"

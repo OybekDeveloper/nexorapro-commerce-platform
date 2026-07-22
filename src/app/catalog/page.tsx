@@ -4,7 +4,7 @@ import { CatalogClient } from "@/components/storefront/catalog-client";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
 
-export const metadata: Metadata = { title: "Katalog", description: "nexorapro.dev premium texnologiyalar katalogi." };
+export const metadata: Metadata = { title: "Katalog", description: "nexorapro.uz premium texnologiyalar katalogi." };
 
 export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ category?: string; q?: string }> }) {
   const { category, q } = await searchParams;

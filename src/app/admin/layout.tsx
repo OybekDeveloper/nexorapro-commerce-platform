@@ -5,7 +5,7 @@ import { requirePageUser } from "@/server/auth";
 
 export const metadata: Metadata = {
   title: "Commerce Admin",
-  description: "nexorapro.dev commerce management dashboard",
+  description: "nexorapro.uz commerce management dashboard",
 };
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

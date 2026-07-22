@@ -10,20 +10,20 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "nexorapro.dev — Premium technology store",
-    template: "%s | nexorapro.dev",
+    default: "nexorapro.uz — Premium technology store",
+    template: "%s | nexorapro.uz",
   },
-  applicationName: "nexorapro.dev",
-  description: "nexorapro.dev premium electronics storefront and commerce management platform.",
+  applicationName: "nexorapro.uz",
+  description: "nexorapro.uz premium electronics storefront and commerce management platform.",
   icons: {
     icon: "/nexorapro-dev-icon.svg",
     shortcut: "/nexorapro-dev-icon.svg",
     apple: "/nexorapro-dev-icon.svg",
   },
   openGraph: {
-    title: "nexorapro.dev — Premium technology store",
+    title: "nexorapro.uz — Premium technology store",
     description: "Premium electronics storefront and commerce management platform.",
-    siteName: "nexorapro.dev",
+    siteName: "nexorapro.uz",
     type: "website",
   },
 };

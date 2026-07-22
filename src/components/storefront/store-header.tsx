@@ -11,9 +11,9 @@ import { canUseStoreMotion, CART_ADDED_EVENT, loadGsap, prefersCompactMotion } f
 import { cn } from "@/lib/utils";
 
 const copy = {
-  UZ: { announcement: "Toshkent bo‘ylab 24 soat ichida yetkazib berish", catalog: "Katalog", categories: "Kategoriyalar", benefits: "Afzalliklar", admin: "Admin", search: "Mahsulot qidirish", placeholder: "iPhone, MacBook yoki AirPods...", all: "Barcha natijalar", menu: "Menyu" },
-  RU: { announcement: "Доставка по Ташкенту в течение 24 часов", catalog: "Каталог", categories: "Категории", benefits: "Преимущества", admin: "Админ", search: "Поиск товаров", placeholder: "iPhone, MacBook или AirPods...", all: "Все результаты", menu: "Меню" },
-  EN: { announcement: "Delivery across Tashkent within 24 hours", catalog: "Catalog", categories: "Categories", benefits: "Benefits", admin: "Admin", search: "Search products", placeholder: "iPhone, MacBook or AirPods...", all: "View all results", menu: "Menu" },
+  UZ: { announcement: "Toshkent bo‘ylab 24 soat ichida yetkazib berish", catalog: "Katalog", categories: "Kategoriyalar", benefits: "Afzalliklar", admin: "Admin", search: "Mahsulot qidirish", placeholder: "iPhone, MacBook yoki AirPods...", all: "Barcha natijalar", menu: "Menyu", skip: "Asosiy kontentga o‘tish", cart: "Savat", login: "Email orqali kirish", closeSearch: "Qidiruvni yopish", quick: "Tezkor qidiruv", quickHint: "Kamida 2 ta harf kiriting yoki katalogni oching.", empty: "Mahsulot topilmadi", emptyHint: "Boshqa nom yoki kategoriya bilan qidiring.", closeMenu: "Menyuni yopish", open: "ochish", searchVerb: "qidirish", close: "yopish" },
+  RU: { announcement: "Доставка по Ташкенту в течение 24 часов", catalog: "Каталог", categories: "Категории", benefits: "Преимущества", admin: "Админ", search: "Поиск товаров", placeholder: "iPhone, MacBook или AirPods...", all: "Все результаты", menu: "Меню", skip: "Перейти к основному содержанию", cart: "Корзина", login: "Войти по email", closeSearch: "Закрыть поиск", quick: "Быстрый поиск", quickHint: "Введите минимум 2 символа или откройте каталог.", empty: "Товары не найдены", emptyHint: "Попробуйте другое название или категорию.", closeMenu: "Закрыть меню", open: "открыть", searchVerb: "поиск", close: "закрыть" },
+  EN: { announcement: "Delivery across Tashkent within 24 hours", catalog: "Catalog", categories: "Categories", benefits: "Benefits", admin: "Admin", search: "Search products", placeholder: "iPhone, MacBook or AirPods...", all: "View all results", menu: "Menu", skip: "Skip to main content", cart: "Cart", login: "Sign in with email", closeSearch: "Close search", quick: "Quick search", quickHint: "Enter at least 2 characters or open the catalog.", empty: "No products found", emptyHint: "Try another name or category.", closeMenu: "Close menu", open: "open", searchVerb: "search", close: "close" },
 } satisfies Record<StoreLocale, Record<string, string>>;
 
 export function StoreHeader() {
@@ -143,13 +143,13 @@ export function StoreHeader() {
 
   return (
     <>
-      <a href="#main-content" className="sr-only z-[80] rounded-full bg-black px-4 py-2 text-sm text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">Asosiy kontentga o‘tish</a>
+      <a href="#main-content" className="sr-only z-[80] rounded-full bg-black px-4 py-2 text-sm text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{labels.skip}</a>
       <div className="bg-brand px-4 py-2 text-center text-[11px] font-semibold tracking-wide text-white sm:text-xs">{labels.announcement}</div>
       <header className="sticky top-0 z-50 border-b border-black/5 bg-white md:bg-white/88 md:backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex cursor-pointer items-center gap-2 rounded-lg text-lg font-semibold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             <NexoraMark className="size-7 text-brand" />
-            <span>nexorapro<span className="text-brand">.dev</span></span>
+            <span>nexorapro<span className="text-brand">.uz</span></span>
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-medium text-zinc-600 md:flex" aria-label="Asosiy navigatsiya">
             {navItems.map((item) => <Link key={item.href} href={item.href} onClick={() => { setSearchOpen(false); setLocaleOpen(false); }} className={cn("cursor-pointer rounded-md transition-colors hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand", pathname === item.href && "text-black")}>{item.label}</Link>)}
@@ -164,11 +164,11 @@ export function StoreHeader() {
             <button type="button" onClick={() => setSearchOpen(true)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" aria-label={labels.search}>
               <Search className="size-[18px]" />
             </button>
-            <Link ref={cartRef} href="/cart" className="relative inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" aria-label={`Savat, ${cartCount} ta mahsulot`}>
+            <Link ref={cartRef} href="/cart" className="relative inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" aria-label={`${labels.cart}: ${cartCount}`}>
               <ShoppingBag className="size-[18px]" />
               {cartCount > 0 && <span data-cart-count className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-5 text-white">{cartCount > 99 ? "99+" : cartCount}</span>}
             </Link>
-            <Link href={user ? "/account" : "/login"} className="hidden size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:inline-flex" aria-label={user ? `${user.name} akkaunti` : "Kirish"}>
+            <Link href={user ? "/account" : "/login"} className="hidden size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:inline-flex" aria-label={user ? user.name : labels.login}>
               <UserRound className="size-[18px]" />
             </Link>
             <button type="button" onClick={() => setMenuOpen(true)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden" aria-label={labels.menu}>
@@ -180,31 +180,31 @@ export function StoreHeader() {
 
       {searchOpen && (
         <div ref={searchLayerRef} className="fixed inset-0 z-[70] bg-black/50 p-3 sm:bg-black/45 sm:p-6 sm:backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="store-search-title">
-          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSearchOpen(false)} aria-label="Qidiruvni yopish" />
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSearchOpen(false)} aria-label={labels.closeSearch} />
           <div ref={searchPanelRef} className="relative mx-auto mt-[8vh] max-w-2xl overflow-hidden rounded-[1.75rem] border border-white/20 bg-white shadow-2xl">
             <div className="flex items-center gap-3 border-b border-black/10 p-4 sm:p-5">
               <Search className="size-5 shrink-0 text-zinc-400" />
               <div className="min-w-0 flex-1"><label id="store-search-title" htmlFor="global-product-search" className="sr-only">{labels.search}</label><input id="global-product-search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") submitSearch(); }} placeholder={labels.placeholder} className="h-10 w-full bg-transparent text-base outline-none placeholder:text-zinc-400 sm:text-lg" /></div>
-              <button type="button" onClick={() => setSearchOpen(false)} className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-zinc-100 transition-colors hover:bg-zinc-200" aria-label="Qidiruvni yopish"><X className="size-4" /></button>
+              <button type="button" onClick={() => setSearchOpen(false)} className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full bg-zinc-100 transition-colors hover:bg-zinc-200" aria-label={labels.closeSearch}><X className="size-4" /></button>
             </div>
             <div className="max-h-[55vh] overflow-y-auto p-3">
-              {query.trim().length < 2 && <div className="px-3 py-8 text-center"><p className="font-medium">Tezkor qidiruv</p><p className="mt-1 text-sm text-zinc-500">Kamida 2 ta harf kiriting yoki katalogni oching.</p></div>}
-              {query.trim().length >= 2 && results.length === 0 && <div className="px-3 py-8 text-center"><p className="font-medium">Mahsulot topilmadi</p><p className="mt-1 text-sm text-zinc-500">Boshqa nom yoki kategoriya bilan qidiring.</p></div>}
+              {query.trim().length < 2 && <div className="px-3 py-8 text-center"><p className="font-medium">{labels.quick}</p><p className="mt-1 text-sm text-zinc-500">{labels.quickHint}</p></div>}
+              {query.trim().length >= 2 && results.length === 0 && <div className="px-3 py-8 text-center"><p className="font-medium">{labels.empty}</p><p className="mt-1 text-sm text-zinc-500">{labels.emptyHint}</p></div>}
               {results.map((product) => <Link key={product.id} href={`/product/${product.slug}`} onClick={() => setSearchOpen(false)} className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><div><p className="font-semibold">{product.name}</p><p className="mt-0.5 text-xs text-zinc-500">{product.category} · {product.specs.slice(0, 2).join(" · ")}</p></div><ArrowRight className="size-4 shrink-0 text-brand" /></Link>)}
               <button type="button" onClick={submitSearch} className="mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Search className="size-4" />{labels.all}</button>
             </div>
-            <div className="hidden items-center justify-between border-t border-black/5 bg-zinc-50 px-5 py-3 text-xs text-zinc-500 sm:flex"><span>Enter — qidirish</span><span>⌘ K — ochish · Esc — yopish</span></div>
+            <div className="hidden items-center justify-between border-t border-black/5 bg-zinc-50 px-5 py-3 text-xs text-zinc-500 sm:flex"><span>Enter — {labels.searchVerb}</span><span>⌘ K — {labels.open} · Esc — {labels.close}</span></div>
           </div>
         </div>
       )}
 
       {menuOpen && (
         <div className="fixed inset-0 z-[70] md:hidden">
-          <button ref={menuBackdropRef} type="button" className="absolute inset-0 cursor-default bg-black/50" onClick={() => setMenuOpen(false)} aria-label="Menyuni yopish" />
+          <button ref={menuBackdropRef} type="button" className="absolute inset-0 cursor-default bg-black/50" onClick={() => setMenuOpen(false)} aria-label={labels.closeMenu} />
           <aside ref={menuPanelRef} className="absolute right-0 top-0 flex h-full w-[min(88vw,360px)] flex-col bg-white p-5 shadow-2xl" aria-label="Mobil menyu">
-            <div className="flex items-center justify-between"><span className="font-semibold">{labels.menu}</span><button type="button" onClick={() => setMenuOpen(false)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100" aria-label="Menyuni yopish"><X className="size-5" /></button></div>
+            <div className="flex items-center justify-between"><span className="font-semibold">{labels.menu}</span><button type="button" onClick={() => setMenuOpen(false)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100" aria-label={labels.closeMenu}><X className="size-5" /></button></div>
             <nav className="mt-8 space-y-2">{navItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="flex h-14 cursor-pointer items-center justify-between rounded-2xl border border-black/5 px-4 text-lg font-semibold transition-colors hover:bg-zinc-100">{item.label}<ArrowRight className="size-4 text-brand" /></Link>)}</nav>
-            <div className="mt-auto space-y-2 border-t border-black/10 pt-5"><Link href="/cart" className="flex h-12 cursor-pointer items-center justify-between rounded-xl bg-brand px-4 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><ShoppingBag className="size-4" />Savat</span><span>{cartCount}</span></Link><Link href={user ? "/account" : "/login"} className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-semibold"><UserRound className="size-4" />{user ? user.name : "Email orqali kirish"}</Link><Link href="/admin" className="flex h-12 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold text-zinc-600"><UserRound className="size-4" />Admin panel</Link></div>
+            <div className="mt-auto space-y-2 border-t border-black/10 pt-5"><Link href="/cart" className="flex h-12 cursor-pointer items-center justify-between rounded-xl bg-brand px-4 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><ShoppingBag className="size-4" />{labels.cart}</span><span>{cartCount}</span></Link><Link href={user ? "/account" : "/login"} className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-semibold"><UserRound className="size-4" />{user ? user.name : labels.login}</Link><Link href="/admin" className="flex h-12 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold text-zinc-600"><UserRound className="size-4" />{labels.admin}</Link></div>
           </aside>
         </div>
       )}

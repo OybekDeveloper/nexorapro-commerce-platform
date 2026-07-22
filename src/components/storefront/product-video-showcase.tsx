@@ -3,10 +3,19 @@
 import { ExternalLink, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
 import type { StoreProductVideo } from "@/lib/storefront-data";
 import { canUseStoreMotion, loadGsap, prefersCompactMotion, prefersLowDataMotion } from "@/lib/storefront-motion";
 
+const copy = {
+  UZ: { video: "videosi", media: "Rasmiy media · portfolio namoyishi", pause: "Videoni pauza qilish", play: "Videoni ijro etish", mute: "Video ovozini o‘chirish", unmute: "Video ovozini yoqish", source: "Manba" },
+  RU: { video: "видео", media: "Официальные медиа · демонстрация портфолио", pause: "Приостановить видео", play: "Воспроизвести видео", mute: "Выключить звук", unmute: "Включить звук", source: "Источник" },
+  EN: { video: "video", media: "Official media · portfolio showcase", pause: "Pause video", play: "Play video", mute: "Mute video", unmute: "Unmute video", source: "Source" },
+} satisfies Record<StoreLocale, Record<string, string>>;
+
 export function ProductVideoShowcase({ media, productName }: { media: StoreProductVideo; productName: string }) {
+  const { locale } = useStore();
+  const labels = copy[locale];
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const userPausedRef = useRef(false);
@@ -92,7 +101,7 @@ export function ProductVideoShowcase({ media, productName }: { media: StoreProdu
   };
 
   return (
-    <section ref={sectionRef} aria-label={`${productName} videosi`} className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-20">
+    <section ref={sectionRef} aria-label={`${productName} ${labels.video}`} className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-20">
       <div data-video-stage className="relative overflow-hidden rounded-[2rem] bg-[#07110f] text-white shadow-[0_30px_90px_rgba(7,17,15,0.22)]">
         <div className="relative aspect-video min-h-[300px] sm:min-h-0">
           <video
@@ -114,17 +123,17 @@ export function ProductVideoShowcase({ media, productName }: { media: StoreProdu
             <div className="max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#72e4ce]">{media.eyebrow}</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-5xl">{media.title}</h2>
-              <p className="mt-3 text-sm text-white/65">Rasmiy Apple Newsroom media · portfolio namoyishi</p>
+              <p className="mt-3 text-sm text-white/65">{labels.media}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button type="button" onClick={togglePlayback} className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={playing ? "Videoni pauza qilish" : "Videoni ijro etish"}>
+              <button type="button" onClick={togglePlayback} className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={playing ? labels.pause : labels.play}>
                 {playing ? <Pause className="size-4 fill-current" /> : <Play className="ml-0.5 size-4 fill-current" />}
               </button>
-              <button type="button" onClick={toggleMuted} className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={muted ? "Video ovozini yoqish" : "Video ovozini o‘chirish"}>
+              <button type="button" onClick={toggleMuted} className="inline-flex size-11 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white" aria-label={muted ? labels.unmute : labels.mute}>
                 {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
               </button>
               <a href={media.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-white/20 bg-black/35 px-4 text-xs font-semibold text-white backdrop-blur-md transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
-                Manba <ExternalLink className="size-3.5" />
+                {labels.source} <ExternalLink className="size-3.5" />
               </a>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 ## Brand direction
 
-nexorapro.dev uses a focused, premium commerce visual language. The primary brand color is `#10a184`; neutral surfaces and restrained accent usage keep dense retail data readable without making the interface visually noisy.
+nexorapro.uz uses a focused, premium commerce visual language. The primary brand color is `#10a184`; neutral surfaces and restrained accent usage keep dense retail data readable without making the interface visually noisy.
 
 ## Foundations
 
@@ -11,7 +11,7 @@ nexorapro.dev uses a focused, premium commerce visual language. The primary bran
 - Typography: high-contrast hierarchy with compact admin labels
 - Radius: rounded controls and cards with consistent proportions
 - Motion: short, purposeful transitions with reduced-motion support
-- Icons: custom nexorapro.dev SVG marks supported by Lucide interaction icons
+- Icons: custom nexorapro.uz SVG marks supported by Lucide interaction icons
 
 ## Interface principles
 

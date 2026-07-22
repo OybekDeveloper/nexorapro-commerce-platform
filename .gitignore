@@ -36,6 +36,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Local-only VPS credentials and deployment access
+.server-access
+
 # local persistent database
 data/*.db
 data/*.db-*

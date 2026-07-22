@@ -11,7 +11,7 @@ export function AuthForm({ admin = false, next = "/", initialMode = "login" }: {
   const router = useRouter();
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState(admin && process.env.NODE_ENV === "development" ? "admin@nexorapro.dev" : "");
+  const [email, setEmail] = useState(admin && process.env.NODE_ENV === "development" ? "admin@nexorapro.uz" : "");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,7 @@ export function AuthForm({ admin = false, next = "/", initialMode = "login" }: {
     }
   }}>
     {!admin && mode === "register" && <label className="block"><span className="text-sm font-medium">Ism</span><span className="mt-2 flex h-12 items-center gap-3 rounded-xl border border-black/10 bg-white px-4 focus-within:ring-2 focus-within:ring-brand"><UserRound className="size-4 text-zinc-400" /><input required autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="Oybek Developer" /></span></label>}
-    <label className="block"><span className="text-sm font-medium">Email</span><span className="mt-2 flex h-12 items-center gap-3 rounded-xl border border-black/10 bg-white px-4 focus-within:ring-2 focus-within:ring-brand"><Mail className="size-4 text-zinc-400" /><input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder={admin ? "admin@nexorapro.dev" : "siz@email.com"} /></span></label>
+    <label className="block"><span className="text-sm font-medium">Email</span><span className="mt-2 flex h-12 items-center gap-3 rounded-xl border border-black/10 bg-white px-4 focus-within:ring-2 focus-within:ring-brand"><Mail className="size-4 text-zinc-400" /><input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder={admin ? "admin@nexorapro.uz" : "siz@email.com"} /></span></label>
     <label className="block"><span className="text-sm font-medium">Parol</span><span className="mt-2 flex h-12 items-center gap-3 rounded-xl border border-black/10 bg-white px-4 focus-within:ring-2 focus-within:ring-brand"><LockKeyhole className="size-4 text-zinc-400" /><input required type="password" autoComplete={mode === "register" ? "new-password" : "current-password"} value={password} onChange={(event) => setPassword(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm outline-none" placeholder="••••••••••" /></span>{mode === "register" && <span className="mt-2 block text-xs leading-5 text-zinc-500">Kamida 10 belgi: katta-kichik harf, raqam va maxsus belgi.</span>}</label>
     {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
     <button type="submit" disabled={pending} className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(16,161,132,0.22)] disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Tekshirilmoqda..." : admin ? "Admin panelga kirish" : mode === "login" ? "Kirish" : "Akkaunt yaratish"}<ArrowRight className="size-4" /></button>

@@ -26,6 +26,8 @@ export type StoreProduct = {
   colors: string[];
   specs: string[];
   featured: boolean;
+  languages?: import("@/lib/types").ProductLanguage[];
+  translations?: Partial<Record<import("@/lib/types").ProductLanguage, import("@/lib/types").ProductTranslation>>;
 };
 
 export const storefrontProducts: StoreProduct[] = [
