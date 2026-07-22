@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  images: {
+    // Eskiz VPS exposes an older x86-64 CPU without SSE4.2/Wasm SIMD. Public
+    // assets are already pre-optimized, so serve them directly and keep the
+    // incompatible Sharp runtime out of the production release.
+    unoptimized: true,
+  },
   serverExternalPackages: ["better-sqlite3"],
   outputFileTracingExcludes: {
     "/*": ["./data/**/*"],

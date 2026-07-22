@@ -57,12 +57,14 @@ jobs:
           cp -a public "$RELEASE_DIR/public"
           cp -a deploy "$RELEASE_DIR/deploy"
 
-          # Sharp 0.35 keeps its platform-specific libvips runtime in optional
-          # @img packages. Include them explicitly because Next standalone file
-          # tracing does not currently copy every native runtime artifact.
-          mkdir -p "$RELEASE_DIR/node_modules/@img"
-          cp -a node_modules/@img/. "$RELEASE_DIR/node_modules/@img/"
-          cp -a node_modules/sharp "$RELEASE_DIR/node_modules/sharp"
+          # Images are pre-optimized and Next image optimization is disabled for
+          # the VPS's older CPU. Do not ship incompatible native Sharp binaries.
+          rm -rf -- "$RELEASE_DIR/node_modules/sharp" "$RELEASE_DIR/node_modules/@img"
+
+          if [ -e "$RELEASE_DIR/node_modules/sharp" ] || [ -e "$RELEASE_DIR/node_modules/@img" ]; then
+            echo "Refusing to package an image-processing native runtime." >&2
+            exit 1
+          fi
 
           if find "$RELEASE_DIR" -type f \
             \( -name '.env*' -o -name '*.db' -o -name '*.db-*' -o -name '*.sqlite' -o -name '*.sqlite-*' \) \
