@@ -44,6 +44,25 @@ sudo systemctl reload nginx
 
 Point the domain's DNS A record to the VPS, then issue a Let's Encrypt certificate.
 
+After the first healthy release, run the idempotent hardening helper from a root
+console. It verifies that the `deploy` user's authorized key exists before it
+disables password/root SSH, enables UFW for SSH/HTTP/HTTPS, activates Fail2ban,
+installs SQLite recovery tooling, and loads the production Nginx configuration:
+
+```bash
+sudo bash /var/www/nexorapro/current/deploy/harden-server.sh
+```
+
+When public DNS resolves both the root domain and `www` to the VPS, issue and
+activate the Let's Encrypt certificate:
+
+```bash
+sudo bash /var/www/nexorapro/current/deploy/harden-server.sh --with-https
+```
+
+The HTTPS mode exits without requesting a certificate when DNS still points
+elsewhere. Cloudflare SSL/TLS should then be set to **Full (strict)**.
+
 ## 2. Configure SSH access
 
 Create a dedicated Ed25519 key locally and add its public key to the deployment
