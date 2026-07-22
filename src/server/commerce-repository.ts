@@ -14,7 +14,7 @@ import type {
   OrderStatus,
   UpdateProductInput,
 } from "@/lib/commerce";
-import type { ProductCategory } from "@/lib/types";
+import type { ProductCategory, ProductLanguage, ProductTranslation } from "@/lib/types";
 import { database } from "@/server/database";
 
 type ProductRow = {
@@ -49,6 +49,18 @@ type ProductRow = {
   updated_at: string;
 };
 
+type ProductTranslationRow = {
+  product_id: string;
+  locale: ProductLanguage;
+  name: string;
+  description: string;
+  image_alt: string;
+  badge: string | null;
+  specs_json: string;
+  video_title: string | null;
+  video_eyebrow: string | null;
+};
+
 type OrderRow = Omit<CommerceOrder, "items" | "createdAt" | "userId" | "addressLatitude" | "addressLongitude"> & {
   created_at: string;
   user_id: string | null;
@@ -65,7 +77,46 @@ function parseStringArray(value: string) {
   }
 }
 
-function mapProduct(row: ProductRow): CommerceProduct {
+function mapTranslation(row: ProductTranslationRow): ProductTranslation {
+  return {
+    name: row.name,
+    description: row.description,
+    imageAlt: row.image_alt,
+    badge: row.badge ?? undefined,
+    specs: parseStringArray(row.specs_json),
+    videoTitle: row.video_title ?? undefined,
+    videoEyebrow: row.video_eyebrow ?? undefined,
+  };
+}
+
+function getProductTranslations(productIds: string[]) {
+  const translations = new Map<string, Partial<Record<ProductLanguage, ProductTranslation>>>();
+  if (productIds.length === 0) return translations;
+  const placeholders = productIds.map(() => "?").join(",");
+  const rows = database.prepare(`
+    SELECT product_id, locale, name, description, image_alt, badge, specs_json, video_title, video_eyebrow
+    FROM product_translations WHERE product_id IN (${placeholders}) ORDER BY locale
+  `).all(...productIds) as ProductTranslationRow[];
+  for (const row of rows) {
+    const values = translations.get(row.product_id) ?? {};
+    values[row.locale] = mapTranslation(row);
+    translations.set(row.product_id, values);
+  }
+  return translations;
+}
+
+function mapProduct(row: ProductRow, translations: Partial<Record<ProductLanguage, ProductTranslation>> = {}): CommerceProduct {
+  const normalizedTranslations = Object.keys(translations).length > 0 ? translations : {
+    UZ: {
+      name: row.name,
+      description: row.description,
+      imageAlt: row.image_alt,
+      badge: row.badge ?? undefined,
+      specs: parseStringArray(row.specs_json),
+      videoTitle: row.video_title ?? undefined,
+      videoEyebrow: row.video_eyebrow ?? undefined,
+    },
+  };
   const video = row.video_url ? {
     src: row.video_url,
     poster: row.video_poster_url ?? row.image,
@@ -91,7 +142,8 @@ function mapProduct(row: ProductRow): CommerceProduct {
     stock: row.stock,
     status: row.status,
     visibleOnStorefront: Boolean(row.visible_on_storefront),
-    languages: parseStringArray(row.languages_json) as CommerceProduct["languages"],
+    languages: Object.keys(normalizedTranslations) as ProductLanguage[],
+    translations: normalizedTranslations,
     sales: row.sales,
     badge: row.badge ?? undefined,
     rating: row.rating,
@@ -143,12 +195,14 @@ export function listProducts(options: { storefrontOnly?: boolean } = {}) {
   const query = options.storefrontOnly
     ? "SELECT * FROM products WHERE visible_on_storefront = 1 AND status = 'published' ORDER BY featured DESC, created_at ASC"
     : "SELECT * FROM products ORDER BY created_at DESC, name ASC";
-  return (database.prepare(query).all() as ProductRow[]).map(mapProduct);
+  const rows = database.prepare(query).all() as ProductRow[];
+  const translations = getProductTranslations(rows.map((row) => row.id));
+  return rows.map((row) => mapProduct(row, translations.get(row.id)));
 }
 
 export function getProduct(idOrSlug: string) {
   const row = database.prepare("SELECT * FROM products WHERE id = ? OR slug = ?").get(idOrSlug, idOrSlug) as ProductRow | undefined;
-  return row ? mapProduct(row) : null;
+  return row ? mapProduct(row, getProductTranslations([row.id]).get(row.id)) : null;
 }
 
 function uniqueSlug(name: string, excludedId?: string) {
@@ -160,59 +214,120 @@ function uniqueSlug(name: string, excludedId?: string) {
   return slug;
 }
 
-export function createProduct(input: CreateProductInput) {
-  const id = `prd_${randomUUID().slice(0, 12)}`;
-  const slug = uniqueSlug(input.name);
-  const visible = input.status === "published" && input.visibleOnStorefront;
-  database.prepare(`
-    INSERT INTO products (
-      id, slug, name, sku, category, description, image, image_alt, cost_price, price,
-      compare_at_price, stock, status, visible_on_storefront, languages_json, video_url,
-      video_poster_url, colors_json, specs_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', '[]')
-  `).run(
-    id, slug, input.name, input.sku, input.category,
-    input.description ?? `${input.name} — nexorapro.dev katalogidagi yangi mahsulot.`,
-    input.image ?? "/products/iphone-17-pro.png", input.imageAlt ?? input.name,
-    input.costPrice, input.price, input.compareAtPrice ?? null, input.stock,
-    input.status, Number(visible), JSON.stringify(input.languages),
-    input.videoUrl || null, input.videoPosterUrl || null,
-  );
-  if (input.stock > 0) {
-    database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, note) VALUES (?, 'restock', ?, 'Boshlang‘ich qoldiq')").run(id, input.stock);
+function fallbackTranslation(input: Pick<CreateProductInput, "name" | "description" | "imageAlt">): ProductTranslation {
+  return {
+    name: input.name,
+    description: input.description ?? `${input.name} — nexorapro.uz katalogidagi yangi mahsulot.`,
+    imageAlt: input.imageAlt ?? input.name,
+    specs: [],
+  };
+}
+
+const upsertTranslation = database.prepare(`
+  INSERT INTO product_translations (
+    product_id, locale, name, description, image_alt, badge, specs_json, video_title, video_eyebrow
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(product_id, locale) DO UPDATE SET
+    name = excluded.name,
+    description = excluded.description,
+    image_alt = excluded.image_alt,
+    badge = excluded.badge,
+    specs_json = excluded.specs_json,
+    video_title = excluded.video_title,
+    video_eyebrow = excluded.video_eyebrow,
+    updated_at = CURRENT_TIMESTAMP
+`);
+
+function saveTranslations(productId: string, translations: Partial<Record<ProductLanguage, ProductTranslation>>) {
+  for (const locale of ["UZ", "RU", "EN"] as const) {
+    const content = translations[locale];
+    if (!content) continue;
+    upsertTranslation.run(
+      productId,
+      locale,
+      content.name,
+      content.description,
+      content.imageAlt,
+      content.badge || null,
+      JSON.stringify(content.specs),
+      content.videoTitle || null,
+      content.videoEyebrow || null,
+    );
   }
-  return getProduct(id)!;
+  const rows = database.prepare("SELECT locale FROM product_translations WHERE product_id = ? ORDER BY locale").all(productId) as Array<{ locale: ProductLanguage }>;
+  database.prepare("UPDATE products SET languages_json = ? WHERE id = ?").run(JSON.stringify(rows.map(({ locale }) => locale)), productId);
+}
+
+export function createProduct(input: CreateProductInput) {
+  return database.transaction(() => {
+    const id = `prd_${randomUUID().slice(0, 12)}`;
+    const translations = input.translations ?? { UZ: fallbackTranslation(input) };
+    const primary = translations.UZ ?? translations.RU ?? translations.EN ?? fallbackTranslation(input);
+    const slug = uniqueSlug(primary.name);
+    const visible = input.status === "published" && input.visibleOnStorefront;
+    database.prepare(`
+      INSERT INTO products (
+        id, slug, name, sku, category, description, image, image_alt, cost_price, price,
+        compare_at_price, stock, status, visible_on_storefront, languages_json, video_url,
+        video_poster_url, badge, colors_json, specs_json, video_title, video_eyebrow
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?)
+    `).run(
+      id, slug, primary.name, input.sku, input.category, primary.description,
+      input.image ?? "/products/iphone-17-pro.png", primary.imageAlt,
+      input.costPrice, input.price, input.compareAtPrice ?? null, input.stock,
+      input.status, Number(visible), JSON.stringify(Object.keys(translations)),
+      input.videoUrl || null, input.videoPosterUrl || null, primary.badge || null,
+      JSON.stringify(primary.specs), primary.videoTitle || null, primary.videoEyebrow || null,
+    );
+    saveTranslations(id, translations);
+    if (input.stock > 0) {
+      database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, note) VALUES (?, 'restock', ?, 'Boshlang‘ich qoldiq')").run(id, input.stock);
+    }
+    return getProduct(id)!;
+  })();
 }
 
 export function updateProduct(id: string, input: UpdateProductInput) {
-  const current = getProduct(id);
-  if (!current) return null;
-  const next = {
-    ...current,
-    ...input,
-    slug: input.name ? uniqueSlug(input.name, id) : current.slug,
-    languages: input.addLanguage && !current.languages.includes(input.addLanguage)
-      ? [...current.languages, input.addLanguage]
-      : input.languages ?? current.languages,
-  };
-  const stock = Math.max(0, current.stock + (input.stockDelta ?? 0));
-  const nextStock = input.stock ?? stock;
-  const visible = next.status === "published" && next.visibleOnStorefront;
-  database.prepare(`
-    UPDATE products SET slug = ?, name = ?, sku = ?, category = ?, description = ?, image = ?,
-      image_alt = ?, cost_price = ?, price = ?, compare_at_price = ?, stock = ?, status = ?,
-      visible_on_storefront = ?, languages_json = ?, video_url = ?, video_poster_url = ?,
-      updated_at = CURRENT_TIMESTAMP WHERE id = ?
-  `).run(
-    next.slug, next.name, next.sku, next.category, next.description, next.image, next.imageAlt,
-    next.costPrice, next.price, next.compareAtPrice ?? null, nextStock, next.status,
-    Number(visible), JSON.stringify(next.languages), next.videoUrl || null,
-    next.videoPosterUrl || null, id,
-  );
-  if (input.stockDelta) {
-    database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, note) VALUES (?, 'adjustment', ?, 'Mahsulot kartasidan qoldiq yangilandi')").run(id, input.stockDelta);
-  }
-  return getProduct(id)!;
+  return database.transaction(() => {
+    const current = getProduct(id);
+    if (!current) return null;
+    const translations = { ...(current.translations ?? {}), ...input.translations };
+    const primary = translations.UZ ?? translations.RU ?? translations.EN;
+    const next = {
+      ...current,
+      ...input,
+      name: primary?.name ?? input.name ?? current.name,
+      description: primary?.description ?? input.description ?? current.description,
+      imageAlt: primary?.imageAlt ?? input.imageAlt ?? current.imageAlt,
+      badge: primary?.badge,
+      specs: primary?.specs ?? current.specs,
+      slug: uniqueSlug(primary?.name ?? input.name ?? current.name, id),
+      languages: Object.keys(translations) as ProductLanguage[],
+    };
+    const stock = Math.max(0, current.stock + (input.stockDelta ?? 0));
+    const nextStock = input.stock ?? stock;
+    const visible = next.status === "published" && next.visibleOnStorefront;
+    database.prepare(`
+      UPDATE products SET slug = ?, name = ?, sku = ?, category = ?, description = ?, image = ?,
+        image_alt = ?, cost_price = ?, price = ?, compare_at_price = ?, stock = ?, status = ?,
+        visible_on_storefront = ?, languages_json = ?, video_url = ?, video_poster_url = ?,
+        badge = ?, specs_json = ?, video_title = ?, video_eyebrow = ?,
+        updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).run(
+      next.slug, next.name, next.sku, next.category, next.description, next.image, next.imageAlt,
+      next.costPrice, next.price, next.compareAtPrice ?? null, nextStock, next.status,
+      Number(visible), JSON.stringify(next.languages), next.videoUrl || null,
+      next.videoPosterUrl || null, next.badge || null, JSON.stringify(next.specs),
+      primary?.videoTitle || next.video?.title || null,
+      primary?.videoEyebrow || next.video?.eyebrow || null,
+      id,
+    );
+    if (input.translations) saveTranslations(id, input.translations);
+    if (input.stockDelta) {
+      database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, note) VALUES (?, 'adjustment', ?, 'Mahsulot kartasidan qoldiq yangilandi')").run(id, input.stockDelta);
+    }
+    return getProduct(id)!;
+  })();
 }
 
 export function archiveProduct(id: string) {

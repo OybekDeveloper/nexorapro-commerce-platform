@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { useStore } from "@/components/storefront/store-provider";
+import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
 import {
   LocationPicker,
   type MapLocation,
@@ -31,6 +31,12 @@ import {
   prefersCompactMotion,
 } from "@/lib/storefront-motion";
 
+const copy = {
+  UZ: { promoOk: "10% chegirma qo‘llandi.", promoBad: "Promo kod topilmadi. Demo kod: NEXORA10", accepted: "Buyurtma qabul qilindi", thanks: "Rahmat! Xarid muvaffaqiyatli yakunlandi.", orderNumber: "Buyurtma raqami", saved: "Buyurtma serverda saqlandi va admin panelida boshqariladi.", back: "Katalogga qaytish", orders: "Buyurtmalarim", empty: "Savatingiz hozircha bo‘sh.", emptyHint: "Katalogdan mahsulot tanlang. Qo‘shilgan mahsulotlar sahifalar orasida saqlanadi.", openCatalog: "Katalogni ochish", choice: "Sizning tanlovingiz", cart: "Savat", itemsDelivery: "ta mahsulot · Toshkent bo‘ylab bepul yetkazib berish", clearCart: "Savatni tozalash", remove: "savatdan olib tashlash", quantity: "Miqdor", decrease: "Miqdorni kamaytirish", increase: "Miqdorni oshirish", total: "Jami", perks: [["Bepul yetkazish", "Toshkent bo‘ylab"], ["Kafolat", "Tekshirilgan mahsulot"], ["Qulay qaytarish", "14 kun ichida"]], summary: "Buyurtma xulosasi", products: "Mahsulotlar", delivery: "Yetkazib berish", free: "Bepul", discount: "Promo chegirma", promo: "Promo kod", apply: "Qo‘llash", checkout: "Xaridni davom ettirish", login: "Email orqali kirish", accountRequired: "Xarid uchun akkaunt talab qilinadi." },
+  RU: { promoOk: "Скидка 10% применена.", promoBad: "Промокод не найден. Демо-код: NEXORA10", accepted: "Заказ принят", thanks: "Спасибо! Покупка успешно оформлена.", orderNumber: "Номер заказа", saved: "Заказ сохранён на сервере и доступен в панели администратора.", back: "Вернуться в каталог", orders: "Мои заказы", empty: "Ваша корзина пока пуста.", emptyHint: "Выберите товар в каталоге. Добавленные товары сохраняются между страницами.", openCatalog: "Открыть каталог", choice: "Ваш выбор", cart: "Корзина", itemsDelivery: "товаров · бесплатная доставка по Ташкенту", clearCart: "Очистить корзину", remove: "удалить из корзины", quantity: "Количество", decrease: "Уменьшить количество", increase: "Увеличить количество", total: "Итого", perks: [["Бесплатная доставка", "По Ташкенту"], ["Гарантия", "Проверенный товар"], ["Удобный возврат", "В течение 14 дней"]], summary: "Итоги заказа", products: "Товары", delivery: "Доставка", free: "Бесплатно", discount: "Скидка по промокоду", promo: "Промокод", apply: "Применить", checkout: "Продолжить оформление", login: "Войти по email", accountRequired: "Для оформления требуется аккаунт." },
+  EN: { promoOk: "10% discount applied.", promoBad: "Promo code not found. Demo code: NEXORA10", accepted: "Order received", thanks: "Thank you! Checkout completed successfully.", orderNumber: "Order number", saved: "The order was saved on the server and is available in the admin panel.", back: "Back to catalog", orders: "My orders", empty: "Your cart is currently empty.", emptyHint: "Choose a product from the catalog. Added items persist between pages.", openCatalog: "Open catalog", choice: "Your selection", cart: "Cart", itemsDelivery: "items · free delivery across Tashkent", clearCart: "Clear cart", remove: "remove from cart", quantity: "Quantity", decrease: "Decrease quantity", increase: "Increase quantity", total: "Total", perks: [["Free delivery", "Across Tashkent"], ["Warranty", "Verified product"], ["Easy returns", "Within 14 days"]], summary: "Order summary", products: "Products", delivery: "Delivery", free: "Free", discount: "Promo discount", promo: "Promo code", apply: "Apply", checkout: "Continue checkout", login: "Sign in with email", accountRequired: "An account is required for checkout." },
+} satisfies Record<StoreLocale, Record<string, string | string[][]>>;
+
 export function CartPageContent() {
   const {
     cartLines,
@@ -40,7 +46,9 @@ export function CartPageContent() {
     removeFromCart,
     clearCart,
     user,
+    locale,
   } = useStore();
+  const labels = copy[locale];
   const [promo, setPromo] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoMessage, setPromoMessage] = useState("");
@@ -80,11 +88,7 @@ export function CartPageContent() {
   const applyPromo = () => {
     const valid = promo.trim().toUpperCase() === "NEXORA10";
     setPromoApplied(valid);
-    setPromoMessage(
-      valid
-        ? "10% chegirma qo‘llandi."
-        : "Promo kod topilmadi. Demo kod: NEXORA10",
-    );
+    setPromoMessage(valid ? String(labels.promoOk) : String(labels.promoBad));
   };
 
   if (completedOrder) {
@@ -107,18 +111,18 @@ export function CartPageContent() {
             data-motion-hero-item
             className="mt-6 text-sm font-semibold text-brand"
           >
-            Buyurtma qabul qilindi
+            {String(labels.accepted)}
           </p>
           <h1
             data-motion-hero-item
             className="mt-2 text-3xl font-semibold tracking-[-0.04em]"
           >
-            Rahmat! Checkout muvaffaqiyatli yakunlandi.
+            {String(labels.thanks)}
           </h1>
           <p data-motion-hero-item className="mt-4 text-zinc-600">
-            Buyurtma raqami{" "}
+            {String(labels.orderNumber)}{" "}
             <strong className="text-[#1d1d1f]">{completedOrder}</strong>.
-            Buyurtma backend’da saqlandi va admin panelida boshqariladi.
+            {String(labels.saved)}
           </p>
           <div
             data-motion-hero-item
@@ -128,13 +132,13 @@ export function CartPageContent() {
               href="/catalog"
               className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-brand px-6 text-sm font-semibold text-white"
             >
-              Katalogga qaytish
+              {String(labels.back)}
             </Link>
             <Link
               href="/account"
               className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-zinc-100 px-6 text-sm font-semibold"
             >
-              Buyurtmalarim
+              {String(labels.orders)}
             </Link>
           </div>
         </div>
@@ -162,21 +166,20 @@ export function CartPageContent() {
             data-motion-hero-item
             className="mt-6 text-3xl font-semibold tracking-[-0.04em]"
           >
-            Savatingiz hozircha bo‘sh.
+            {String(labels.empty)}
           </h1>
           <p
             data-motion-hero-item
             className="mx-auto mt-3 max-w-md text-zinc-600"
           >
-            Katalogdan mahsulot tanlang. Qo‘shilgan mahsulotlar sahifalar
-            orasida saqlanadi.
+            {String(labels.emptyHint)}
           </p>
           <Link
             data-motion-hero-item
             href="/catalog"
             className="mt-7 inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-semibold text-white"
           >
-            Katalogni ochish <ChevronRight className="size-4" />
+            {String(labels.openCatalog)} <ChevronRight className="size-4" />
           </Link>
         </div>
       </main>
@@ -198,16 +201,16 @@ export function CartPageContent() {
               data-motion-hero-item
               className="text-sm font-semibold text-brand"
             >
-              Sizning tanlovingiz
+              {String(labels.choice)}
             </p>
             <h1
               data-motion-hero-item
               className="mt-2 text-4xl font-semibold tracking-[-0.055em] sm:text-6xl"
             >
-              Savat.
+              {String(labels.cart)}.
             </h1>
             <p data-motion-hero-item className="mt-3 text-zinc-600">
-              {cartCount} ta mahsulot · Toshkent bo‘ylab bepul yetkazib berish
+              {cartCount} {String(labels.itemsDelivery)}
             </p>
           </div>
           <button
@@ -217,7 +220,7 @@ export function CartPageContent() {
             className="inline-flex h-10 cursor-pointer items-center gap-2 self-start rounded-full px-3 text-sm font-semibold text-zinc-500 transition-colors hover:bg-white hover:text-red-600"
           >
             <Trash2 className="size-4" />
-            Savatni tozalash
+            {String(labels.clearCart)}
           </button>
         </div>
 
@@ -267,14 +270,14 @@ export function CartPageContent() {
                         type="button"
                         onClick={() => removeFromCart(product.id)}
                         className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                        aria-label={`${product.name}ni savatdan olib tashlash`}
+                        aria-label={`${product.name}: ${String(labels.remove)}`}
                       >
                         <X className="size-4" />
                       </button>
                     </div>
                     <div className="mt-auto flex flex-wrap items-end justify-between gap-4 pt-5">
                       <div>
-                        <p className="text-xs text-zinc-500">Miqdor</p>
+                        <p className="text-xs text-zinc-500">{String(labels.quantity)}</p>
                         <div className="mt-2 inline-flex items-center rounded-full border border-black/10">
                           <button
                             type="button"
@@ -282,7 +285,7 @@ export function CartPageContent() {
                               updateQuantity(product.id, quantity - 1)
                             }
                             className="inline-flex size-9 cursor-pointer items-center justify-center rounded-l-full hover:bg-zinc-100"
-                            aria-label="Miqdorni kamaytirish"
+                            aria-label={String(labels.decrease)}
                           >
                             <Minus className="size-3.5" />
                           </button>
@@ -295,14 +298,14 @@ export function CartPageContent() {
                               updateQuantity(product.id, quantity + 1)
                             }
                             className="inline-flex size-9 cursor-pointer items-center justify-center rounded-r-full hover:bg-zinc-100"
-                            aria-label="Miqdorni oshirish"
+                            aria-label={String(labels.increase)}
                           >
                             <Plus className="size-3.5" />
                           </button>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-xs text-zinc-500">Jami</p>
+                        <p className="text-xs text-zinc-500">{String(labels.total)}</p>
                         <p className="mt-1 text-lg font-semibold">
                           {formatStoreMoney(product.price * quantity)}
                         </p>
@@ -313,12 +316,9 @@ export function CartPageContent() {
               ))}
             </div>
             <div className="grid gap-3 border-t border-black/5 bg-zinc-50 p-5 sm:grid-cols-3 sm:p-6">
-              {[
-                [Truck, "Bepul yetkazish", "Toshkent bo‘ylab"],
-                [ShieldCheck, "Kafolat", "Tekshirilgan mahsulot"],
-                [PackageCheck, "Qulay qaytarish", "14 kunlik demo policy"],
-              ].map(([Icon, title, text]) => {
-                const Component = Icon as typeof Truck;
+              {([Truck, ShieldCheck, PackageCheck] as const).map((Icon, index) => {
+                const [title, text] = (labels.perks as string[][])[index];
+                const Component = Icon;
                 return (
                   <div key={String(title)} className="flex gap-3">
                     <Component className="mt-0.5 size-5 shrink-0 text-brand" />
@@ -338,26 +338,26 @@ export function CartPageContent() {
             data-motion-reveal
             className="h-fit rounded-[1.75rem] bg-white p-5 shadow-[0_16px_50px_rgba(0,0,0,0.06)] sm:p-6 lg:sticky lg:top-24"
           >
-            <h2 className="text-xl font-semibold">Buyurtma xulosasi</h2>
+            <h2 className="text-xl font-semibold">{String(labels.summary)}</h2>
             <div className="mt-6 space-y-3 text-sm">
               <div className="flex justify-between text-zinc-600">
-                <span>Mahsulotlar</span>
+                <span>{String(labels.products)}</span>
                 <span>{formatStoreMoney(subtotal)}</span>
               </div>
               <div className="flex justify-between text-zinc-600">
-                <span>Yetkazib berish</span>
-                <span className="font-semibold text-brand">Bepul</span>
+                <span>{String(labels.delivery)}</span>
+                <span className="font-semibold text-brand">{String(labels.free)}</span>
               </div>
               {promoApplied && (
                 <div className="flex justify-between text-zinc-600">
-                  <span>Promo chegirma</span>
+                  <span>{String(labels.discount)}</span>
                   <span className="font-semibold text-brand">
                     -{formatStoreMoney(discount)}
                   </span>
                 </div>
               )}
               <div className="flex items-end justify-between border-t border-black/10 pt-4">
-                <span className="font-semibold">Jami</span>
+                <span className="font-semibold">{String(labels.total)}</span>
                 <span className="text-2xl font-semibold tracking-tight">
                   {formatStoreMoney(total)}
                 </span>
@@ -368,7 +368,7 @@ export function CartPageContent() {
                 htmlFor="promo-code"
                 className="text-xs font-semibold text-zinc-600"
               >
-                Promo kod
+                {String(labels.promo)}
               </label>
               <div className="mt-2 flex gap-2">
                 <input
@@ -383,7 +383,7 @@ export function CartPageContent() {
                   onClick={applyPromo}
                   className="h-11 cursor-pointer rounded-xl bg-zinc-100 px-4 text-sm font-semibold hover:bg-zinc-200"
                 >
-                  Qo‘llash
+                  {String(labels.apply)}
                 </button>
               </div>
               {promoMessage && (
@@ -401,7 +401,7 @@ export function CartPageContent() {
                 className="mt-6 inline-flex h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(16,161,132,0.22)] transition-opacity hover:opacity-85"
               >
                 <CreditCard className="size-4" />
-                Checkout’ni davom ettirish
+                {String(labels.checkout)}
               </button>
             ) : (
               <Link
@@ -409,13 +409,13 @@ export function CartPageContent() {
                 className="mt-6 inline-flex h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(16,161,132,0.22)]"
               >
                 <CreditCard className="size-4" />
-                Email orqali kirish
+                {String(labels.login)}
               </Link>
             )}
             <p className="mt-3 text-center text-xs leading-5 text-zinc-500">
               {user
                 ? `${user.email} sifatida xarid qilasiz.`
-                : "Checkout uchun akkaunt talab qilinadi."}
+                : String(labels.accountRequired)}
             </p>
           </aside>
         </div>

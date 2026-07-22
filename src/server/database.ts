@@ -77,6 +77,21 @@ database.exec(`
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS product_translations (
+    product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    locale TEXT NOT NULL CHECK(locale IN ('UZ', 'RU', 'EN')),
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    image_alt TEXT NOT NULL DEFAULT '',
+    badge TEXT,
+    specs_json TEXT NOT NULL DEFAULT '[]',
+    video_title TEXT,
+    video_eyebrow TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (product_id, locale)
+  );
+
   CREATE TABLE IF NOT EXISTS orders (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
     id TEXT UNIQUE,
@@ -116,6 +131,7 @@ database.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_products_storefront ON products(visible_on_storefront, status);
+  CREATE INDEX IF NOT EXISTS idx_product_translations_locale ON product_translations(locale, product_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
   CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
   CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at DESC);
@@ -139,7 +155,7 @@ database.exec("CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id, cre
 
 const seedAdmin = () => {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase()
-    ?? (process.env.NODE_ENV === "development" ? "admin@nexorapro.dev" : "");
+    ?? (process.env.NODE_ENV === "development" ? "admin@nexorapro.uz" : "");
   const password = process.env.ADMIN_PASSWORD
     ?? (process.env.NODE_ENV === "development" ? "NexoraAdmin2026!" : "");
   const name = process.env.ADMIN_NAME?.trim() || "Oybek Aka";
@@ -225,8 +241,50 @@ const seedOrders = database.transaction(() => {
   }
 });
 
+const migrateProductTranslations = database.transaction(() => {
+  const products = database.prepare(`
+    SELECT id, name, description, image_alt, badge, specs_json, video_title, video_eyebrow
+    FROM products
+  `).all() as Array<{
+    id: string;
+    name: string;
+    description: string;
+    image_alt: string;
+    badge: string | null;
+    specs_json: string;
+    video_title: string | null;
+    video_eyebrow: string | null;
+  }>;
+  const insert = database.prepare(`
+    INSERT OR IGNORE INTO product_translations (
+      product_id, locale, name, description, image_alt, badge, specs_json, video_title, video_eyebrow
+    ) VALUES (?, 'UZ', ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const product of products) {
+    insert.run(
+      product.id,
+      product.name,
+      product.description,
+      product.image_alt,
+      product.badge,
+      product.specs_json,
+      product.video_title,
+      product.video_eyebrow,
+    );
+  }
+  database.exec(`
+    UPDATE products
+    SET languages_json = COALESCE((
+      SELECT json_group_array(locale)
+      FROM product_translations
+      WHERE product_id = products.id
+    ), '["UZ"]')
+  `);
+});
+
 seedAdmin();
 seedProducts();
+migrateProductTranslations();
 seedOrders();
 
 export { database };

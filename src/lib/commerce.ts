@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { StoreProduct } from "@/lib/storefront-data";
-import type { Product } from "@/lib/types";
+import type { Product, ProductLanguage, ProductTranslation } from "@/lib/types";
 
 export const productStatusSchema = z.enum(["published", "draft", "archived"]);
 export const productCategorySchema = z.enum(["Smartfon", "Noutbuk", "Audio", "Planshet", "Aksessuar"]);
@@ -47,6 +47,22 @@ export type CommerceOrder = {
 
 const optionalUrl = z.union([z.url(), z.literal("")]).optional();
 
+export const productTranslationSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().min(2).max(2000),
+  imageAlt: z.string().trim().max(180).default(""),
+  badge: z.string().trim().max(60).optional(),
+  specs: z.array(z.string().trim().min(1).max(120)).max(20).default([]),
+  videoTitle: z.string().trim().max(180).optional(),
+  videoEyebrow: z.string().trim().max(100).optional(),
+});
+
+const productTranslationsSchema = z.object({
+  UZ: productTranslationSchema.optional(),
+  RU: productTranslationSchema.optional(),
+  EN: productTranslationSchema.optional(),
+}).refine((translations) => Object.values(translations).some(Boolean), "Kamida bitta til kontenti kiritilishi kerak");
+
 const productInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
   sku: z.string().trim().min(2).max(60).transform((value) => value.toUpperCase()),
@@ -58,6 +74,7 @@ const productInputSchema = z.object({
   status: productStatusSchema,
   visibleOnStorefront: z.boolean(),
   languages: z.array(languageSchema).min(1),
+  translations: productTranslationsSchema.optional(),
   description: z.string().trim().max(500).optional(),
   image: z.string().trim().min(1).optional(),
   imageAlt: z.string().trim().max(180).optional(),
@@ -74,7 +91,6 @@ export const createProductSchema = productInputSchema.extend({
 
 export const updateProductSchema = productInputSchema.partial().extend({
   stockDelta: z.number().int().optional(),
-  addLanguage: languageSchema.optional(),
 });
 
 export const createOrderSchema = z.object({
@@ -121,6 +137,32 @@ export type InventoryMovement = {
   note: string;
   createdAt: string;
 };
+
+export function localizeProduct<T extends {
+  name: string;
+  description: string;
+  imageAlt: string;
+  badge?: string;
+  specs: string[];
+  video?: StoreProduct["video"];
+  translations?: Partial<Record<ProductLanguage, ProductTranslation>>;
+}>(product: T, locale: ProductLanguage): T {
+  const content = product.translations?.[locale] ?? product.translations?.UZ;
+  if (!content) return product;
+  return {
+    ...product,
+    name: content.name,
+    description: content.description,
+    imageAlt: content.imageAlt || product.imageAlt,
+    badge: content.badge,
+    specs: content.specs,
+    video: product.video ? {
+      ...product.video,
+      title: content.videoTitle || product.video.title,
+      eyebrow: content.videoEyebrow || product.video.eyebrow,
+    } : product.video,
+  };
+}
 
 export type CommerceAnalytics = {
   revenue: number;

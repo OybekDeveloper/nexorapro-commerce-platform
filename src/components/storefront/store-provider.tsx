@@ -2,8 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { storefrontProducts, type StoreProduct } from "@/lib/storefront-data";
+import { type StoreProduct } from "@/lib/storefront-data";
 import type { AuthUser } from "@/lib/auth";
+import { localizeProduct } from "@/lib/commerce";
 import { CART_ADDED_EVENT, type CartAddedDetail } from "@/lib/storefront-motion";
 
 export type StoreLocale = "UZ" | "RU" | "EN";
@@ -29,9 +30,9 @@ const StoreContext = createContext<StoreContextValue | null>(null);
 const CART_KEY = "nexorapro-cart-v1";
 const LOCALE_KEY = "nexorapro-locale-v1";
 
-export function StoreProvider({ children, initialProducts = storefrontProducts, initialUser = null }: { children: React.ReactNode; initialProducts?: StoreProduct[]; initialUser?: AuthUser | null }) {
+export function StoreProvider({ children, initialProducts = [], initialUser = null }: { children: React.ReactNode; initialProducts?: StoreProduct[]; initialUser?: AuthUser | null }) {
   const [locale, setLocaleState] = useState<StoreLocale>("UZ");
-  const [products, setProducts] = useState<StoreProduct[]>(initialProducts);
+  const [sourceProducts, setSourceProducts] = useState<StoreProduct[]>(initialProducts);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
 
@@ -55,7 +56,7 @@ export function StoreProvider({ children, initialProducts = storefrontProducts, 
     let active = true;
     const refresh = () => fetch("/api/products?scope=storefront", { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<{ products: StoreProduct[] }> : null)
-      .then((payload) => { if (active && payload) setProducts(payload.products); })
+      .then((payload) => { if (active && payload) setSourceProducts(payload.products); })
       .catch(() => undefined);
     // SSR already provides fresh products, so skip the redundant refetch on
     // load (it re-renders the tree during the LCP window). Refresh only when
@@ -78,6 +79,15 @@ export function StoreProvider({ children, initialProducts = storefrontProducts, 
     setLocaleState(nextLocale);
     window.localStorage.setItem(LOCALE_KEY, nextLocale);
   };
+
+  useEffect(() => {
+    document.documentElement.lang = locale.toLowerCase();
+  }, [locale]);
+
+  const products = useMemo(
+    () => sourceProducts.map((product) => localizeProduct(product, locale)),
+    [locale, sourceProducts],
+  );
 
   const addToCart = useCallback((productId: string, quantity = 1) => {
     const product = products.find((item) => item.id === productId);

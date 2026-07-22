@@ -11,11 +11,23 @@ import {
 } from "lucide-react";
 
 import { ProductCard } from "@/components/storefront/product-card";
-import { useStore } from "@/components/storefront/store-provider";
+import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
 import { storeCategories, type StoreCategory } from "@/lib/storefront-data";
 import { cn } from "@/lib/utils";
 
 type SortValue = "featured" | "price-asc" | "price-desc" | "rating";
+
+const copy = {
+  UZ: { eyebrow: "nexorapro.dev katalogi", title: "O‘zingizga mos texnologiyani tanlang.", intro: "Haqiqiy mahsulot rasmlari, tushunarli xususiyatlar va API bilan ishlaydigan xarid tajribasi.", category: "Kategoriya", all: "Barcha mahsulotlar", availability: "Mavjudlik", inStock: "Faqat mavjudlari", inStockHint: "Omborda bor mahsulotlar", clearFilters: "Filtrlarni tozalash", filters: "Filtrlar", search: "Mahsulot, kategoriya yoki xususiyat...", filter: "Filtr", featured: "Tavsiya etilgan", low: "Narx: arzonidan", high: "Narx: qimmatidan", rating: "Reyting bo‘yicha", products: "ta mahsulot", clear: "Tozalash", notFound: "Mahsulot topilmadi", notFoundHint: "Qidiruv so‘zi yoki filtrlarni o‘zgartirib ko‘ring.", results: "ta natijani ko‘rish" },
+  RU: { eyebrow: "Каталог nexorapro.dev", title: "Выберите подходящую технологию.", intro: "Реальные изображения, понятные характеристики и покупки через API.", category: "Категория", all: "Все товары", availability: "Наличие", inStock: "Только в наличии", inStockHint: "Товары, доступные на складе", clearFilters: "Сбросить фильтры", filters: "Фильтры", search: "Товар, категория или характеристика...", filter: "Фильтр", featured: "Рекомендуемые", low: "Цена: по возрастанию", high: "Цена: по убыванию", rating: "По рейтингу", products: "товаров", clear: "Сбросить", notFound: "Товары не найдены", notFoundHint: "Измените поисковый запрос или фильтры.", results: "результатов" },
+  EN: { eyebrow: "nexorapro.dev Catalog", title: "Choose the technology that fits you.", intro: "Real product images, clear specifications, and an API-powered shopping experience.", category: "Category", all: "All products", availability: "Availability", inStock: "In stock only", inStockHint: "Products currently in stock", clearFilters: "Clear filters", filters: "Filters", search: "Product, category, or feature...", filter: "Filter", featured: "Featured", low: "Price: low to high", high: "Price: high to low", rating: "By rating", products: "products", clear: "Clear", notFound: "No products found", notFoundHint: "Try changing your search or filters.", results: "results" },
+} satisfies Record<StoreLocale, Record<string, string>>;
+
+export const categoryCopy: Record<StoreLocale, Record<StoreCategory, { label: string; description: string }>> = {
+  UZ: { Smartfon: { label: "Smartfonlar", description: "Eng yangi Pro modellar" }, Noutbuk: { label: "Noutbuklar", description: "Ish va ijod uchun kuch" }, Planshet: { label: "Planshetlar", description: "Yengil va professional" }, Audio: { label: "Audio", description: "Tiniq va chuqur ovoz" }, Aksessuar: { label: "Aksessuarlar", description: "Qulay kundalik qo‘shimchalar" } },
+  RU: { Smartfon: { label: "Смартфоны", description: "Новейшие Pro-модели" }, Noutbuk: { label: "Ноутбуки", description: "Мощность для работы и творчества" }, Planshet: { label: "Планшеты", description: "Лёгкие и профессиональные" }, Audio: { label: "Аудио", description: "Чистый и глубокий звук" }, Aksessuar: { label: "Аксессуары", description: "Удобные дополнения на каждый день" } },
+  EN: { Smartfon: { label: "Smartphones", description: "The latest Pro models" }, Noutbuk: { label: "Laptops", description: "Power for work and creativity" }, Planshet: { label: "Tablets", description: "Light and professional" }, Audio: { label: "Audio", description: "Clear, immersive sound" }, Aksessuar: { label: "Accessories", description: "Useful everyday additions" } },
+};
 
 export function CatalogClient({
   initialCategory,
@@ -24,7 +36,8 @@ export function CatalogClient({
   initialCategory?: string;
   initialQuery?: string;
 }) {
-  const { products } = useStore();
+  const { products, locale } = useStore();
+  const labels = copy[locale];
   const validCategory = storeCategories.some(
     (item) => item.value === initialCategory,
   )
@@ -68,18 +81,18 @@ export function CatalogClient({
     <div className="space-y-7">
       <fieldset>
         <legend className="text-sm font-semibold text-[#1d1d1f]">
-          Kategoriya
+          {labels.category}
         </legend>
         <div className="mt-3 space-y-1">
           {[
             {
               value: "all" as const,
-              label: "Barcha mahsulotlar",
+              label: labels.all,
               count: products.length,
             },
             ...storeCategories.map((item) => ({
               value: item.value,
-              label: item.label,
+              label: categoryCopy[locale][item.value].label,
               count: products.filter(
                 (product) => product.category === item.value,
               ).length,
@@ -105,13 +118,13 @@ export function CatalogClient({
       </fieldset>
       <fieldset>
         <legend className="text-sm font-semibold text-[#1d1d1f]">
-          Mavjudlik
+          {labels.availability}
         </legend>
         <label className="mt-3 flex cursor-pointer items-center justify-between rounded-xl border border-black/10 px-3 py-3 text-sm">
           <span>
-            <span className="block font-medium">Faqat mavjudlari</span>
+            <span className="block font-medium">{labels.inStock}</span>
             <span className="mt-0.5 block text-xs text-zinc-500">
-              Omborda bor mahsulotlar
+              {labels.inStockHint}
             </span>
           </span>
           <input
@@ -128,7 +141,7 @@ export function CatalogClient({
         className="inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-black/10 text-sm font-semibold transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <X className="size-4" />
-        Filtrlarni tozalash
+        {labels.clearFilters}
       </button>
     </div>
   );
@@ -141,20 +154,19 @@ export function CatalogClient({
       <div className="mx-auto max-w-7xl">
         <div data-motion-hero className="max-w-3xl">
           <p data-motion-hero-item className="text-sm font-semibold text-brand">
-            nexorapro.dev Catalog
+            {labels.eyebrow}
           </p>
           <h1
             data-motion-hero-item
             className="mt-3 text-4xl font-semibold tracking-[-0.055em] sm:text-6xl"
           >
-            O‘zingizga mos texnologiyani tanlang.
+            {labels.title}
           </h1>
           <p
             data-motion-hero-item
             className="mt-5 max-w-2xl text-base leading-7 text-zinc-600 sm:text-lg"
           >
-            Real product rasmlari, tushunarli xususiyatlar va API-backed
-            checkout’gacha ishlaydigan commerce tajribasi.
+            {labels.intro}
           </p>
         </div>
 
@@ -176,9 +188,9 @@ export function CatalogClient({
                   : "border-black/5",
               )}
             >
-              <p className="font-semibold">{item.label}</p>
+              <p className="font-semibold">{categoryCopy[locale][item.value].label}</p>
               <p className="mt-1 text-xs leading-5 text-zinc-500">
-                {item.description}
+                {categoryCopy[locale][item.value].description}
               </p>
             </button>
           ))}
@@ -191,7 +203,7 @@ export function CatalogClient({
           >
             <div className="mb-5 flex items-center gap-2 border-b border-black/5 pb-4">
               <SlidersHorizontal className="size-4 text-brand" />
-              <h2 className="font-semibold">Filtrlar</h2>
+              <h2 className="font-semibold">{labels.filters}</h2>
             </div>
             {filters}
           </aside>
@@ -206,7 +218,7 @@ export function CatalogClient({
                   id="catalog-search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Mahsulot, kategoriya yoki xususiyat..."
+                  placeholder={labels.search}
                   className="h-11 w-full rounded-xl bg-zinc-100 pl-10 pr-3 text-sm outline-none placeholder:text-zinc-500 focus:ring-2 focus:ring-brand"
                 />
               </div>
@@ -217,7 +229,7 @@ export function CatalogClient({
                   className="inline-flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-black/10 px-3 text-sm font-semibold lg:hidden"
                 >
                   <Filter className="size-4" />
-                  Filtr
+                  {labels.filter}
                 </button>
                 <div className="relative flex-1 sm:flex-none">
                   <label htmlFor="catalog-sort" className="sr-only">
@@ -231,10 +243,10 @@ export function CatalogClient({
                     }
                     className="h-11 w-full cursor-pointer appearance-none rounded-xl border border-black/10 bg-white pl-3 pr-9 text-sm font-semibold outline-none focus:ring-2 focus:ring-brand"
                   >
-                    <option value="featured">Tavsiya etilgan</option>
-                    <option value="price-asc">Narx: arzonidan</option>
-                    <option value="price-desc">Narx: qimmatidan</option>
-                    <option value="rating">Reyting bo‘yicha</option>
+                    <option value="featured">{labels.featured}</option>
+                    <option value="price-asc">{labels.low}</option>
+                    <option value="price-desc">{labels.high}</option>
+                    <option value="rating">{labels.rating}</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
                 </div>
@@ -245,7 +257,7 @@ export function CatalogClient({
                 <strong className="text-[#1d1d1f]">
                   {filteredProducts.length}
                 </strong>{" "}
-                ta mahsulot
+                {labels.products}
               </p>
               {(query || category !== "all" || inStockOnly) && (
                 <button
@@ -253,7 +265,7 @@ export function CatalogClient({
                   onClick={clearFilters}
                   className="cursor-pointer text-sm font-semibold text-brand hover:opacity-75"
                 >
-                  Tozalash
+                  {labels.clear}
                 </button>
               )}
             </div>
@@ -267,17 +279,17 @@ export function CatalogClient({
               <div className="rounded-[1.75rem] border border-dashed border-black/15 bg-white px-5 py-20 text-center">
                 <Search className="mx-auto size-8 text-brand" />
                 <h2 className="mt-4 text-xl font-semibold">
-                  Mahsulot topilmadi
+                  {labels.notFound}
                 </h2>
                 <p className="mt-2 text-sm text-zinc-500">
-                  Qidiruv so‘zi yoki filtrlarni o‘zgartirib ko‘ring.
+                  {labels.notFoundHint}
                 </p>
                 <button
                   type="button"
                   onClick={clearFilters}
                   className="mt-5 h-10 cursor-pointer rounded-full bg-brand px-5 text-sm font-semibold text-white"
                 >
-                  Barcha mahsulotlar
+                  {labels.all}
                 </button>
               </div>
             )}
@@ -295,7 +307,7 @@ export function CatalogClient({
           />
           <aside className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white p-5">
             <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Filtrlar</h2>
+              <h2 className="text-lg font-semibold">{labels.filters}</h2>
               <button
                 type="button"
                 onClick={() => setMobileFilters(false)}
@@ -311,7 +323,7 @@ export function CatalogClient({
               onClick={() => setMobileFilters(false)}
               className="mt-5 h-12 w-full cursor-pointer rounded-xl bg-brand text-sm font-semibold text-white"
             >
-              {filteredProducts.length} ta natijani ko‘rish
+              {filteredProducts.length} {labels.results}
             </button>
           </aside>
         </div>

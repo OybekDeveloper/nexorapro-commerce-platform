@@ -43,7 +43,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
       <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
         <Link href="/admin" className="flex cursor-pointer items-center gap-2 overflow-hidden rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand/12 text-brand"><NexoraMark className="size-7" /></span>
-          {!collapsed && <span className="whitespace-nowrap text-lg font-semibold tracking-[-0.04em]">nexorapro<span className="text-brand">.dev</span> admin</span>}
+          {!collapsed && <span className="whitespace-nowrap text-lg font-semibold tracking-[-0.04em]">nexorapro<span className="text-brand">.uz</span> admin</span>}
         </Link>
         <button type="button" onClick={() => setMobileOpen(false)} className="inline-flex size-9 cursor-pointer items-center justify-center rounded-xl hover:bg-sidebar-accent lg:hidden" aria-label="Menyuni yopish">
           <X className="size-5" />
@@ -104,7 +104,7 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
               <Menu className="size-5" />
             </button>
             <div>
-              <p className="text-xs font-medium text-muted-foreground">nexorapro.dev Commerce</p>
+              <p className="text-xs font-medium text-muted-foreground">nexorapro.uz Commerce</p>
               <p className="text-sm font-semibold">Asosiy do‘kon</p>
             </div>
           </div>

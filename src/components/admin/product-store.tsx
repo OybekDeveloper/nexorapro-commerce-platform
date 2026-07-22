@@ -4,28 +4,33 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 
 import { apiRequest } from "@/lib/api-client";
 import type { CommerceOrder } from "@/lib/commerce";
-import { products as seedProducts } from "@/lib/mock-data";
-import type { Product } from "@/lib/types";
+import type { Product, ProductLanguage, ProductTranslation } from "@/lib/types";
 
 type SaleLine = { productId: string; quantity: number };
+export type NewProductInput = Omit<Product, "id" | "sales" | "translations"> & {
+  description?: string;
+  image?: string;
+  imageAlt?: string;
+  translations: Partial<Record<ProductLanguage, ProductTranslation>>;
+};
 
 type ProductStoreValue = {
   products: Product[];
   loading: boolean;
   error: string | null;
   refreshProducts: () => Promise<void>;
-  addProduct: (product: Omit<Product, "id" | "sales">) => Promise<void>;
+  addProduct: (product: NewProductInput) => Promise<void>;
   toggleVisibility: (id: string) => Promise<void>;
   archiveProduct: (id: string) => Promise<void>;
   restockProduct: (id: string, quantity: number) => Promise<void>;
-  addProductLanguage: (id: string, language: "UZ" | "RU" | "EN") => Promise<void>;
+  saveProductTranslation: (id: string, language: ProductLanguage, translation: ProductTranslation) => Promise<void>;
   recordSale: (lines: SaleLine[], details?: { customer?: string; payment?: "cash" | "card" | "installment"; discount?: number }) => Promise<CommerceOrder>;
 };
 
 const ProductStoreContext = createContext<ProductStoreValue | null>(null);
 
 export function ProductStoreProvider({ children }: { children: React.ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(seedProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +59,7 @@ export function ProductStoreProvider({ children }: { children: React.ReactNode }
     return () => { active = false; };
   }, []);
 
-  const addProduct = (product: Omit<Product, "id" | "sales">) => run(async () => {
+  const addProduct = (product: NewProductInput) => run(async () => {
     const payload = await apiRequest<{ product: Product }>("/api/products", { method: "POST", body: JSON.stringify(product) });
     setProducts((current) => [payload.product, ...current]);
   });
@@ -76,8 +81,8 @@ export function ProductStoreProvider({ children }: { children: React.ReactNode }
     await refreshProducts();
   });
 
-  const addProductLanguage = (id: string, language: "UZ" | "RU" | "EN") => run(async () => {
-    const payload = await apiRequest<{ product: Product }>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify({ addLanguage: language }) });
+  const saveProductTranslation = (id: string, language: ProductLanguage, translation: ProductTranslation) => run(async () => {
+    const payload = await apiRequest<{ product: Product }>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify({ translations: { [language]: translation } }) });
     setProducts((items) => items.map((product) => product.id === id ? payload.product : product));
   });
 
@@ -90,7 +95,7 @@ export function ProductStoreProvider({ children }: { children: React.ReactNode }
     return payload.order;
   });
 
-  return <ProductStoreContext.Provider value={{ products, loading, error, refreshProducts, addProduct, toggleVisibility, archiveProduct, restockProduct, addProductLanguage, recordSale }}>{children}</ProductStoreContext.Provider>;
+  return <ProductStoreContext.Provider value={{ products, loading, error, refreshProducts, addProduct, toggleVisibility, archiveProduct, restockProduct, saveProductTranslation, recordSale }}>{children}</ProductStoreContext.Provider>;
 }
 
 export function useProductStore() {

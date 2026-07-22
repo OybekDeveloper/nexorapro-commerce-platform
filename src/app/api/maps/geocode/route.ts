@@ -113,7 +113,7 @@ function fetchNominatim<T>(url: URL) {
       headers: {
         Accept: "application/json",
         "Accept-Language": "uz,ru;q=0.9,en;q=0.7",
-        "User-Agent": "nexorapro-commerce/0.1 (+https://nexorapro.dev)",
+        "User-Agent": "nexorapro-commerce/0.1 (+https://nexorapro.uz)",
       },
       cache: "no-store",
     });

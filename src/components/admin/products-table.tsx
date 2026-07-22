@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { createColumnHelper, flexRender, getCoreRowModel, getFilteredRowModel, useReactTable } from "@tanstack/react-table";
 import { Archive, Check, ChevronDown, Eye, EyeOff, Filter, Languages, Plus, Search, Video, X } from "lucide-react";
 
-import { useProductStore } from "@/components/admin/product-store";
-import type { Product, ProductCategory, ProductStatus } from "@/lib/types";
+import { useProductStore, type NewProductInput } from "@/components/admin/product-store";
+import type { Product, ProductCategory, ProductLanguage, ProductStatus, ProductTranslation } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const formatMoney = (value: number) => value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
@@ -70,7 +70,7 @@ export function ProductsTable() {
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({ data: filteredItems, columns, state: { globalFilter: query }, onGlobalFilterChange: setQuery, getCoreRowModel: getCoreRowModel(), getFilteredRowModel: getFilteredRowModel() });
 
-  const handleAddProduct = async (product: Omit<Product, "id" | "sales">) => {
+  const handleAddProduct = async (product: NewProductInput) => {
     await addProduct(product);
     setDialogOpen(false);
   };
@@ -137,10 +137,15 @@ export function ProductsTable() {
   );
 }
 
-function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (product: Omit<Product, "id" | "sales">) => Promise<void> }) {
-  const [name, setName] = useState("");
+type TranslationDraft = Omit<ProductTranslation, "specs"> & { specs: string };
+
+const emptyTranslation = (): TranslationDraft => ({ name: "", description: "", imageAlt: "", badge: "", specs: "", videoTitle: "", videoEyebrow: "" });
+const languageNames: Record<ProductLanguage, string> = { UZ: "O‘zbekcha", RU: "Русский", EN: "English" };
+
+function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (product: NewProductInput) => Promise<void> }) {
   const [sku, setSku] = useState("");
   const [category, setCategory] = useState<ProductCategory>("Smartfon");
+  const [image, setImage] = useState("");
   const [costPrice, setCostPrice] = useState("");
   const [price, setPrice] = useState("");
   const [compareAtPrice, setCompareAtPrice] = useState("");
@@ -149,14 +154,34 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
   const [stock, setStock] = useState("");
   const [status, setStatus] = useState<ProductStatus>("draft");
   const [visibleOnStorefront, setVisibleOnStorefront] = useState(false);
-  const [languages, setLanguages] = useState<Array<"UZ" | "RU" | "EN">>(["UZ"]);
+  const [languages, setLanguages] = useState<ProductLanguage[]>(["UZ"]);
+  const [activeLanguage, setActiveLanguage] = useState<ProductLanguage>("UZ");
+  const [translations, setTranslations] = useState<Record<ProductLanguage, TranslationDraft>>({ UZ: emptyTranslation(), RU: emptyTranslation(), EN: emptyTranslation() });
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const canSubmit = Boolean(name.trim() && sku.trim() && Number(costPrice) > 0 && Number(price) > 0);
+  const canSubmit = Boolean(
+    sku.trim() && Number(costPrice) > 0 && Number(price) > 0
+    && languages.every((locale) => translations[locale].name.trim().length >= 2 && translations[locale].description.trim().length >= 2),
+  );
   const expectedProfit = Math.max(0, Number(price) - Number(costPrice));
   const margin = Number(price) > 0 ? Math.round((expectedProfit / Number(price)) * 100) : 0;
 
-  const toggleLanguage = (language: "UZ" | "RU" | "EN") => setLanguages((current) => current.includes(language) ? current.filter((item) => item !== language) : [...current, language]);
+  const toggleLanguage = (language: ProductLanguage) => {
+    if (language === "UZ") return;
+    setLanguages((current) => {
+      if (current.includes(language)) {
+        setActiveLanguage("UZ");
+        return current.filter((item) => item !== language);
+      }
+      setActiveLanguage(language);
+      return [...current, language];
+    });
+  };
+  const updateTranslation = (field: keyof TranslationDraft, value: string) => setTranslations((current) => ({
+    ...current,
+    [activeLanguage]: { ...current[activeLanguage], [field]: value },
+  }));
+  const activeTranslation = translations[activeLanguage];
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="add-product-title">
@@ -168,14 +193,32 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
           setSubmitting(true);
           setSubmitError(null);
           try {
+            const localizedContent = Object.fromEntries(languages.map((locale) => {
+              const content = translations[locale];
+              return [locale, {
+                ...content,
+                name: content.name.trim(),
+                description: content.description.trim(),
+                imageAlt: content.imageAlt.trim() || content.name.trim(),
+                badge: content.badge?.trim() || undefined,
+                specs: content.specs.split(/[\n,]/).map((item) => item.trim()).filter(Boolean),
+                videoTitle: content.videoTitle?.trim() || undefined,
+                videoEyebrow: content.videoEyebrow?.trim() || undefined,
+              }];
+            })) as Partial<Record<ProductLanguage, ProductTranslation>>;
+            const uzContent = localizedContent.UZ!;
             await onAdd({
-              name: name.trim(), sku: sku.trim().toUpperCase(), category,
+              name: uzContent.name, sku: sku.trim().toUpperCase(), category,
               costPrice: Number(costPrice), price: Number(price),
               compareAtPrice: Number(compareAtPrice) || undefined,
+              description: uzContent.description,
+              image: image.trim() || undefined,
+              imageAlt: uzContent.imageAlt,
               videoUrl: videoUrl.trim() || undefined, videoPosterUrl: videoPosterUrl.trim() || undefined,
               stock: Number(stock) || 0, status,
               visibleOnStorefront: status === "published" && visibleOnStorefront,
-              languages: languages.length ? languages : ["UZ"],
+              languages,
+              translations: localizedContent,
             });
           } catch (error) {
             setSubmitError(error instanceof Error ? error.message : "Mahsulot yaratilmadi");
@@ -193,9 +236,26 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
           <section>
             <div className="mb-3"><h3 className="text-sm font-semibold">Asosiy ma’lumot</h3><p className="mt-0.5 text-xs text-muted-foreground">Mahsulot katalogda qanday tanilishini belgilang.</p></div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-1.5 sm:col-span-2"><span className="text-sm font-medium">Mahsulot nomi <span className="text-brand">*</span></span><input autoFocus required value={name} onChange={(event) => setName(event.target.value)} placeholder="Masalan, iPhone 16 Pro" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">SKU <span className="text-brand">*</span></span><input required value={sku} onChange={(event) => setSku(event.target.value)} placeholder="APL-IP16P-256" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm uppercase outline-none placeholder:normal-case placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">Kategoriya</span><select value={category} onChange={(event) => setCategory(event.target.value as ProductCategory)} className="h-11 w-full cursor-pointer rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring">{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label className="space-y-1.5 sm:col-span-2"><span className="text-sm font-medium">Mahsulot rasmi</span><input value={image} onChange={(event) => setImage(event.target.value)} placeholder="/products/iphone.png yoki https://..." className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-brand/20 bg-brand/[0.035] p-4">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div><h3 className="text-sm font-semibold">Ko‘p tilli kontent</h3><p className="mt-0.5 text-xs text-muted-foreground">Tanlangan har bir tilning matni product bilan birga DB’ga saqlanadi.</p></div>
+              <div className="flex rounded-xl bg-muted p-1">{languages.map((locale) => <button key={locale} type="button" onClick={() => setActiveLanguage(locale)} className={cn("h-8 rounded-lg px-3 text-xs font-semibold", activeLanguage === locale ? "bg-background text-brand shadow-sm" : "text-muted-foreground")}>{locale}</button>)}</div>
+            </div>
+            <div className="mb-4 flex flex-wrap gap-2">{(["UZ", "RU", "EN"] as const).map((locale) => { const active = languages.includes(locale); return <button type="button" key={locale} onClick={() => active ? toggleLanguage(locale) : toggleLanguage(locale)} className={cn("inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold", active ? "border-brand bg-brand/10 text-brand" : "border-border bg-background text-muted-foreground")} aria-pressed={active}>{active && <Check className="size-3.5" />}{languageNames[locale]}{locale === "UZ" && <span className="opacity-60">· asosiy</span>}</button>; })}</div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5 sm:col-span-2"><span className="text-sm font-medium">Nomi ({activeLanguage}) <span className="text-brand">*</span></span><input autoFocus={activeLanguage === "UZ"} required value={activeTranslation.name} onChange={(event) => updateTranslation("name", event.target.value)} placeholder={activeLanguage === "RU" ? "Название товара" : activeLanguage === "EN" ? "Product name" : "Mahsulot nomi"} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5 sm:col-span-2"><span className="text-sm font-medium">Tavsif ({activeLanguage}) <span className="text-brand">*</span></span><textarea required rows={4} value={activeTranslation.description} onChange={(event) => updateTranslation("description", event.target.value)} placeholder="Storefront’da ko‘rinadigan batafsil tavsif" className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5"><span className="text-sm font-medium">Rasm alt matni</span><input value={activeTranslation.imageAlt} onChange={(event) => updateTranslation("imageAlt", event.target.value)} placeholder="Rasmni qisqa tasvirlang" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5"><span className="text-sm font-medium">Badge</span><input value={activeTranslation.badge} onChange={(event) => updateTranslation("badge", event.target.value)} placeholder="Yangi / Новинка / New" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5 sm:col-span-2"><span className="text-sm font-medium">Xususiyatlar</span><textarea rows={3} value={activeTranslation.specs} onChange={(event) => updateTranslation("specs", event.target.value)} placeholder="Har birini yangi qatorda yozing:&#10;256GB&#10;A19 Pro&#10;6.3 dyuym" className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5"><span className="text-sm font-medium">Video sarlavhasi</span><input value={activeTranslation.videoTitle} onChange={(event) => updateTranslation("videoTitle", event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
+              <label className="space-y-1.5"><span className="text-sm font-medium">Video eyebrow</span><input value={activeTranslation.videoEyebrow} onChange={(event) => updateTranslation("videoEyebrow", event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring" /></label>
             </div>
           </section>
 
@@ -226,7 +286,6 @@ function AddProductDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (pro
               <label className="space-y-1.5"><span className="text-sm font-medium">Boshlang‘ich qoldiq</span><input type="number" inputMode="numeric" min="0" value={stock} onChange={(event) => setStock(event.target.value)} placeholder="0" className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring" /></label>
               <label className="space-y-1.5"><span className="text-sm font-medium">Mahsulot holati</span><select value={status} onChange={(event) => setStatus(event.target.value as ProductStatus)} className="h-11 w-full cursor-pointer rounded-xl border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"><option value="draft">Qoralama</option><option value="published">Sotuvda</option><option value="archived">Arxiv</option></select></label>
             </div>
-            <fieldset className="mt-4"><legend className="text-sm font-medium">Kontent tillari</legend><div className="mt-2 flex gap-2">{(["UZ", "RU", "EN"] as const).map((language) => { const active = languages.includes(language); return <button type="button" key={language} onClick={() => toggleLanguage(language)} className={cn("inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", active ? "border-brand bg-brand/10 text-brand" : "border-border hover:bg-muted")} aria-pressed={active}>{active && <Check className="size-4" />}{language}</button>; })}</div></fieldset>
             <label className={cn("mt-4 flex cursor-pointer items-center justify-between rounded-xl border p-3 transition-colors", status === "published" ? "border-brand/25 bg-brand/[0.035]" : "border-border bg-muted/40 opacity-60")}>
               <span><span className="block text-sm font-medium">Storefront’da ko‘rsatish</span><span className="mt-0.5 block text-xs text-muted-foreground">Faqat “Sotuvda” holatidagi mahsulot e’lon qilinadi.</span></span>
               <input type="checkbox" checked={visibleOnStorefront && status === "published"} disabled={status !== "published"} onChange={(event) => setVisibleOnStorefront(event.target.checked)} className="size-5 cursor-pointer accent-[#10a184] disabled:cursor-not-allowed" />

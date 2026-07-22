@@ -1,118 +1,144 @@
-# nexorapro.dev Commerce
+<div align="center">
 
-**Project 01/10 — Production-Grade Portfolio Series**
+# nexorapro.uz Commerce
 
-Premium electronics storefront and commerce management platform for small and large retailers. nexorapro.dev is designed to manage the full journey from supplier intake and inventory to multilingual publishing, orders, sales analytics, and the customer-facing store.
+**A full-stack electronics storefront and commerce operations platform.**
 
-> Current status: **secured full-stack portfolio MVP complete**. Storefront and admin share one persistent SQLite source of truth, database sessions protect role-based workflows, and tagged cache invalidation keeps published commerce data current.
+Storefront, inventory, orders, point of sale, analytics, localization, and
+role-based administration — built as one production-minded Next.js application.
 
-## Product vision
+[![Live](https://img.shields.io/badge/live-nexorapro.uz-0f8a70?style=for-the-badge)](https://nexorapro.uz)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![GitHub Actions](https://img.shields.io/badge/deploy-GitHub_Actions-2088ff?style=for-the-badge&logo=githubactions&logoColor=white)](.github/workflows/deploy-production.yml)
 
-nexorapro.dev serves electronics retailers that sell products such as smartphones, laptops, tablets, audio devices, and accessories. One platform connects:
+[Live storefront](https://nexorapro.uz) · [Architecture](docs/ARCHITECTURE.md) · [Deployment guide](docs/DEPLOYMENT.md) · [Roadmap](docs/ROADMAP.md)
 
-- A premium, Apple-inspired storefront with an original visual identity
-- Product catalog, variants, pricing, and storefront visibility
-- UZ/RU/EN product content and localization status
-- Supplier intake, warehouses, branches, and stock movements
-- Orders, payments, delivery, returns, and refunds
-- Sales, margin, category, and inventory analytics
-- Multi-store organizations, users, RBAC, and audit logs
+</div>
 
-## Working routes
+![nexorapro.uz premium electronics storefront](docs/assets/storefront-home.png)
 
-| Route                 | Purpose                                                            | Status                    |
-| --------------------- | ------------------------------------------------------------------ | ------------------------- |
-| `/`                   | Premium storefront, product discovery, motion and video showcase   | Database-backed           |
-| `/catalog`            | Search, categories, filters and published product listing          | Database-backed           |
-| `/product/[slug]`     | Product details, shared-image transition and purchase controls     | Database-backed           |
-| `/cart`               | Persistent cart and Yandex Maps delivery-location checkout         | API-backed                |
-| `/login`, `/account`  | Authentication, private order detail, map and live status timeline | Session-protected         |
-| `/admin-login`        | Separate administrator login                                       | Session-protected         |
-| `/admin`              | Executive commerce dashboard                                       | Computed from database    |
-| `/admin/products`     | Create, publish visibility, localization and archive lifecycle     | API-backed                |
-| `/admin/sales`        | POS cart, discount, payment, order and atomic stock deduction      | API-backed                |
-| `/admin/inventory`    | Stock receipt and inventory movement ledger                        | API-backed                |
-| `/admin/orders`       | Online/POS orders, search, details and status workflow             | API-backed                |
-| `/admin/analytics`    | Product metrics and working order CSV export                       | Mixed live/demo analytics |
-| `/admin/localization` | Persistent UZ/RU/EN completeness workflow                          | API-backed                |
+## Overview
 
-## Implemented full-stack foundation
+nexorapro.uz is a secured full-stack commerce MVP for electronics retailers.
+It connects a premium customer experience with the operational tools needed to
+publish products, receive inventory, process sales, manage orders, and review
+business performance.
 
-The isolated client state has been replaced with one shared commerce source of truth:
+The storefront and admin workspace share one persistent source of truth. A
+product published in the admin panel becomes available in the storefront; an
+order updates stock and appears in operational reporting without duplicated
+client-side state.
 
-- Next.js Route Handler REST API with Zod request validation
-- Persistent SQLite database, WAL mode, schema bootstrap, indexes and deterministic seed data
-- Shared products, orders, order line snapshots and inventory movement ledger
-- Product create, visibility, localization completeness, stock receipt and archive actions
-- Transactional POS/storefront order creation with server-side price and stock validation
-- Yandex Maps address search, map/geolocation selection and persisted delivery coordinates
-- Live admin order status workflow, computed dashboard/analytics API and CSV export
-- Private customer order-detail API with live status refresh and delivery-map preview
-- Dynamic storefront publishing: admin visibility changes affect catalog and product routes
-- Email/password authentication with bcrypt hashes, opaque database sessions, HttpOnly cookies and login lockout
-- Admin RBAC enforced inside every private Route Handler, not only in the UI
-- Tagged public product cache with 5-minute TTL and immediate mutation-driven tag/path revalidation
-- Batched order-item loading to avoid N+1 database queries
-- API integration verification plus desktop and 375px real-browser checks
+> **Portfolio project 01/10.** The current release targets a single Ubuntu VPS
+> and uses SQLite intentionally. The architecture documents the migration path
+> to PostgreSQL and object storage for multi-instance production workloads.
 
-## REST API
+## Product highlights
 
-| Endpoint                                | Methods                  | Purpose                                                    |
-| --------------------------------------- | ------------------------ | ---------------------------------------------------------- |
-| `/api/health`                           | `GET`                    | Service and database health                                |
-| `/api/auth/register`, `/api/auth/login` | `POST`                   | Customer account and session creation                      |
-| `/api/auth/admin/login`                 | `POST`                   | Admin-only session creation                                |
-| `/api/auth/me`, `/api/auth/logout`      | `GET`, `POST`            | Current session and revocation                             |
-| `/api/products`                         | `GET`, `POST`            | Admin/storefront catalog and product creation              |
-| `/api/products/[id]`                    | `GET`, `PATCH`, `DELETE` | Product update and safe archive                            |
-| `/api/orders`                           | `GET`, `POST`            | Online and POS order workflow                              |
-| `/api/orders/[id]`                      | `GET`, `PATCH`           | Order detail and status update                             |
-| `/api/account/orders`                   | `GET`                    | Current customer’s private order history and live statuses |
-| `/api/inventory`                        | `GET`, `POST`            | Stock movements and receipts                               |
-| `/api/analytics`                        | `GET`                    | Computed commerce totals                                   |
-| `/api/analytics/export`                 | `GET`                    | UTF-8 order CSV export                                     |
+| Customer experience | Commerce operations | Platform foundation |
+| --- | --- | --- |
+| Premium responsive storefront | Executive dashboard and analytics | Next.js App Router and Route Handlers |
+| Searchable product catalog | Product publishing and archive lifecycle | Persistent SQLite in WAL mode |
+| Product details and video showcase | POS sale with atomic stock deduction | Database-backed sessions and RBAC |
+| Persistent cart and checkout | Inventory receipts and movement ledger | Zod validation and typed repositories |
+| Map-based delivery location | Order status workflow and CSV export | Tagged cache invalidation |
+| Account and private order history | UZ/RU/EN localization workflow | GitHub Actions VPS deployment |
+
+## Admin workspace
+
+![nexorapro.uz commerce admin dashboard](docs/assets/admin-dashboard.png)
+
+The admin experience includes dedicated workspaces for products, sales,
+inventory, orders, analytics, and localization. Private actions are protected at
+the server/API boundary; hiding a navigation item is never treated as
+authorization.
+
+## Architecture
+
+```text
+Customer storefront ─┐
+                     ├─ Next.js 16 application ─ Route Handlers ─ repositories ─ SQLite
+Admin workspace ─────┘           │                    │                 │
+                                 │                    │                 ├─ users + sessions
+                                 │                    │                 ├─ products + stock
+                                 │                    │                 └─ orders + movements
+                                 │                    └─ Zod + RBAC + cache invalidation
+                                 └─ React 19 + Tailwind CSS + GSAP
+```
+
+Important implementation decisions:
+
+- money and stock calculations are validated on the server;
+- order creation and inventory deduction run in one transaction;
+- passwords are hashed with bcrypt and raw session tokens are never stored;
+- customer and admin data are excluded from shared caches;
+- public product and analytics caches are invalidated after mutations;
+- the SQLite database lives outside deployment releases and survives rollouts.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for domain boundaries and the
+long-term data model.
 
 ## Technology
 
-- Next.js 16 App Router
-- React 19 and TypeScript
-- Tailwind CSS 4
-- shadcn/ui foundation
-- TanStack Table
-- Recharts
-- GSAP Flip shared-element transitions
-- better-sqlite3 persistent local database
-- Self-hosted Geist Sans and Mono fonts (no Google Fonts build dependency)
-- Custom nexorapro.dev SVG icon system and Lucide interaction icons
-- Zod, React Hook Form (prepared for validated forms)
+| Layer | Technology |
+| --- | --- |
+| Application | Next.js 16 App Router, React 19, TypeScript 5 |
+| UI | Tailwind CSS 4, shadcn/ui foundation, Base UI, Lucide |
+| Forms and validation | React Hook Form, Zod |
+| Data and authentication | better-sqlite3, bcrypt, opaque HttpOnly sessions |
+| Tables and analytics | TanStack Table, Recharts |
+| Motion and maps | GSAP, Leaflet, OpenStreetMap, Nominatim |
+| Production | GitHub Actions, Next.js standalone output, PM2, Nginx, Let's Encrypt |
 
-## Run locally
+## Working routes
+
+| Route | Purpose |
+| --- | --- |
+| `/`, `/catalog`, `/product/[slug]` | Storefront discovery and product purchase flow |
+| `/cart` | Cart and map-assisted checkout |
+| `/login`, `/account` | Customer authentication and private order history |
+| `/admin-login` | Separate administrator entry point |
+| `/admin` | Business overview and live database totals |
+| `/admin/products` | Product creation, publishing, localization, and archive actions |
+| `/admin/sales` | Point of sale and stock-aware order creation |
+| `/admin/inventory` | Stock receipt and inventory movement history |
+| `/admin/orders` | Order search, details, and status transitions |
+| `/admin/analytics` | Product metrics and CSV export |
+| `/admin/localization` | UZ/RU/EN completeness workflow |
+| `/api/*` | Authenticated REST-style Route Handler API |
+
+## Local development
+
+Requirements: Node.js 24 and npm.
 
 ```bash
-npm install
+git clone https://github.com/OybekDeveloper/nexorapro-commerce-platform.git
+cd nexorapro-commerce-platform
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) for the storefront and [http://localhost:3000/admin](http://localhost:3000/admin) for the admin panel.
+Open [http://localhost:3000](http://localhost:3000). The database is created
+automatically at `data/nexora.db`.
 
-The database is created automatically at `data/nexora.db`. Override it with `NEXORAPRO_DB_PATH` when an isolated database is needed. Development seeds `admin@nexorapro.dev` / `NexoraAdmin2026!`; production does not use that fallback and requires `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` from the environment.
+Production never uses the development admin fallback. Set a unique
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` before the first production start.
 
-Set `NEXT_PUBLIC_YANDEX_MAPS_JS_API_KEY` in `.env.local` for the delivery map. This is a browser-side public key, so restrict its allowed domains in Yandex Developer settings before deployment.
+## Environment and secret safety
 
-Address search and reverse geocoding are proxied through `GEOCODING_BASE_URL`. The default public Nominatim service is queued to one request per second, only runs on an explicit user search/map action, and caches results in memory. For a high-traffic commercial deployment, point this variable to a compatible managed or self-hosted geocoder.
+Only non-secret templates are committed:
 
-Production must be served over HTTPS (for example, Nginx/Caddy in front of `next start`) because session cookies intentionally use the `Secure` flag outside development.
+- [`.env.example`](.env.example) — local development template;
+- [`.github/production.env.example`](.github/production.env.example) — value
+  template for the multiline `PRODUCTION_ENV_FILE` GitHub secret;
+- [`.github/github-actions-secrets.example`](.github/github-actions-secrets.example)
+  — names of all required deployment secrets.
 
-## Cache and revalidation
-
-| Data                                  | Strategy                                    | Freshness                                                                    |
-| ------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| Published storefront products         | Next.js Data Cache, tag `commerce:products` | 5-minute fallback TTL; product/inventory/order mutations expire immediately  |
-| Analytics summary                     | Tagged Data Cache                           | 60-second fallback TTL; order/product/inventory mutations expire immediately |
-| Session, customer orders, admin lists | Uncached/private reads                      | Per request                                                                  |
-
-Mutations combine `revalidateTag(..., { expire: 0 })` with storefront/admin `revalidatePath` calls. This invalidates the data and page/router layers together.
+Real `.env*` files, `.server-access`, SSH keys, and SQLite files are ignored.
+The CI packaging step also fails if an environment or database file enters the
+standalone release.
 
 ## Quality checks
 
@@ -121,27 +147,44 @@ npm run lint
 npm run build
 ```
 
-The current implementation has been checked at desktop and 375px mobile widths using a real browser. Keyboard focus, skip links, responsive tables/cards, reduced-motion preferences, and explicit form labels are included.
+The interface includes keyboard focus states, a skip link, semantic labels,
+reduced-motion handling, responsive admin fallbacks, and layouts verified at
+desktop and 375 px widths.
 
-## Documentation
+## Production deployment
 
-- [Architecture](docs/ARCHITECTURE.md)
-- [Development roadmap](docs/ROADMAP.md)
-- [Design system](docs/DESIGN_SYSTEM.md)
+Every push to `main` runs the production workflow:
 
-## Current production limitations
+1. install locked dependencies on a GitHub-hosted Ubuntu runner;
+2. run ESLint and build the Next.js standalone server;
+3. verify that no `.env` or SQLite files entered the release;
+4. upload the compressed runtime to the VPS over pinned-key SSH;
+5. atomically activate the release and reload one PM2 process;
+6. call `/api/health` and automatically roll back on failure.
 
-- Product media uses local optimized assets and official external demo video URLs; upload storage is not connected yet.
-- Checkout creates a real local order, but no external payment is captured in portfolio mode.
-- SQLite is intended for the local/single-instance portfolio deployment; multi-instance production requires PostgreSQL and migrations.
-- Localization currently persists locale completeness, not separate translated product copy.
-- Conversion funnel and chart time-series remain illustrative; dashboard totals, product sales, order counts, stock, and CSV are database-derived.
-- Supplier purchasing, transfers, refunds, full audit logs, password reset/email verification, and external delivery integrations are not implemented yet.
+The VPS does **not** run `npm install` or `next build`, making the deployment
+suitable for the initial 1 GB instance. Full setup instructions are in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Definition of production-ready for this project
+## Current scope
 
-The project will only be marked production-ready after database persistence, RBAC, validation, audit logs, security review, automated tests, observability, backups, deployment, and documented recovery procedures are implemented and verified.
+This repository is a portfolio MVP, not a live payment processor. Checkout
+creates real local orders, while payment capture, media upload storage,
+password recovery, email verification, refunds, supplier purchasing, audit
+logs, and external delivery integrations remain roadmap work. Multi-instance
+deployment requires PostgreSQL and formal migrations.
+
+Product imagery and linked showcase media belong to their respective owners and
+are used for portfolio demonstration. Prices and inventory are illustrative.
+
+## Project links
+
+- Website: [https://nexorapro.uz](https://nexorapro.uz)
+- Source and author: [OybekDeveloper on GitHub](https://github.com/OybekDeveloper)
+- LinkedIn build story: link will be added after the launch post is published
+
+<!-- LINKEDIN_POST_URL: Replace the line above with the final LinkedIn post URL. -->
 
 ## License
 
-MIT
+Released under the [MIT License](LICENSE).
