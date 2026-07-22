@@ -53,12 +53,20 @@ if [ ! -s "$authorized_keys" ]; then
   exit 1
 fi
 
-for command_name in apt-get nginx sshd systemctl; do
+for command_name in apt-get nginx sshd systemctl ufw; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "Required server command is missing: $command_name" >&2
     exit 1
   fi
 done
+
+# Restore the expected egress policy before package installation. A deny-outgoing
+# policy breaks DNS, certificate renewal, geocoding and pull-based recovery.
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow OpenSSH
+ufw allow 'Nginx Full'
+ufw --force enable
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -85,10 +93,6 @@ EOF
 
 sshd -t
 systemctl reload ssh
-
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw --force enable
 
 systemctl enable --now fail2ban
 if command -v fail2ban-client >/dev/null 2>&1; then
