@@ -109,6 +109,10 @@ test("commerce API critical flows", { timeout: 60_000 }, async (context) => {
   const uploadedMedia = (await upload.json()).media;
   assert.match(uploadedMedia.url, /^\/uploads\/products\//);
   assert.equal(uploadedMedia.mimeType, "image/png");
+  const uploadedAsset = await fetch(`${baseUrl}${uploadedMedia.url}`);
+  assert.equal(uploadedAsset.status, 200);
+  assert.equal(uploadedAsset.headers.get("content-type"), "image/png");
+  assert.match(uploadedAsset.headers.get("cache-control"), /immutable/);
 
   const create = await request("/api/products", {
     method: "POST",
