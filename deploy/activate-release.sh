@@ -9,7 +9,7 @@ CURRENT_LINK="$APP_ROOT/current"
 HEALTH_URL="http://127.0.0.1:3000/api/health"
 RELEASE_ID="${1:-}"
 
-if [[ ! "$RELEASE_ID" =~ ^[0-9]+-[0-9a-f]{40}$ ]]; then
+if [[ ! "$RELEASE_ID" =~ ^[0-9]+-[0-9]+-[0-9a-f]{40}$ ]]; then
   echo "Invalid release id." >&2
   exit 1
 fi
