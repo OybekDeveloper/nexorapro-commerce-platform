@@ -61,7 +61,8 @@ sudo bash /var/www/nexorapro/current/deploy/harden-server.sh --with-https
 ```
 
 The HTTPS mode exits without requesting a certificate when DNS still points
-elsewhere. Cloudflare SSL/TLS should then be set to **Full (strict)**.
+elsewhere. The Nginx policy enables HSTS after the certificate becomes valid;
+Cloudflare SSL/TLS should then be set to **Full (strict)**.
 
 ## 2. Configure SSH access
 
