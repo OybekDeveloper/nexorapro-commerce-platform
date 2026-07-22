@@ -12,12 +12,15 @@ Use Ubuntu 24.04 and a non-root deployment user. Install these prerequisites:
 - PM2 (`sudo npm install --global pm2`)
 - Nginx
 - curl
+- sqlite3 (backup integrity checks and emergency restore)
 
 Create the deployment directories as an administrator, then give the deployment
 user ownership:
 
 ```bash
-sudo mkdir -p /var/www/nexorapro/releases /var/www/nexorapro/shared/data
+sudo mkdir -p /var/www/nexorapro/releases \
+  /var/www/nexorapro/shared/data/migration-backups \
+  /var/www/nexorapro/shared/uploads/products
 sudo chown -R "$USER":"$USER" /var/www/nexorapro
 ```
 
@@ -82,28 +85,58 @@ Use this value structure for `PRODUCTION_ENV_FILE`:
 ```dotenv
 NEXT_PUBLIC_APP_URL=https://nexorapro.uz
 GEOCODING_BASE_URL=https://nominatim.openstreetmap.org
+NEXT_PUBLIC_YANDEX_MAPS_JS_API_KEY=replace-with-yandex-key
 NEXORAPRO_DB_PATH=/var/www/nexorapro/shared/data/nexora.db
+DB_MIGRATION_BACKUP_DIR=/var/www/nexorapro/shared/data/migration-backups
+UPLOAD_DIR=/var/www/nexorapro/shared/uploads
 ADMIN_NAME=Oybek Aka
 ADMIN_EMAIL=admin@nexorapro.uz
 ADMIN_PASSWORD=replace-with-a-long-unique-password
 SESSION_TTL_DAYS=7
 ```
 
-Do not add quotes around `NEXORAPRO_DB_PATH`; the deployment script validates
-that exact shared path to prevent the SQLite database from being lost between
-releases.
+Do not add quotes around `NEXORAPRO_DB_PATH` or `UPLOAD_DIR`; the deployment
+script validates both exact shared paths so durable data cannot accidentally be
+written inside a disposable release.
 
 ## 4. Deploy
 
 Push to `main`, or open **Actions → Deploy production → Run workflow**. The job:
 
 1. installs locked dependencies;
-2. runs ESLint and a production build;
+2. runs ESLint, a production build, and the isolated integration suite;
 3. packages the standalone server, static assets, and public files;
 4. uploads an atomic release over SSH;
 5. restarts the one PM2 process and checks `/api/health`;
 6. rolls back to the previous release if the health check fails.
 
-The SQLite database and production environment file live under
-`/var/www/nexorapro/shared`, outside versioned releases. Back up that directory
-regularly.
+The SQLite database, pre-migration snapshots, uploads, and production environment
+file live under `/var/www/nexorapro/shared`, outside versioned releases. Nginx
+serves `/uploads/` directly from the shared directory.
+
+## Database migration and recovery
+
+Migrations are versioned in `src/server/database.ts` and run synchronously before
+the application starts accepting traffic. If a migration is pending, SQLite
+creates an integrity-preserving `VACUUM INTO` snapshot under
+`shared/data/migration-backups` first. A failed PM2 start or health check keeps the
+previous code release active; the database snapshot remains available for a
+manual recovery.
+
+List and verify backups:
+
+```bash
+ls -lh /var/www/nexorapro/shared/data/migration-backups
+sqlite3 /var/www/nexorapro/shared/data/migration-backups/BACKUP.db 'PRAGMA integrity_check;'
+```
+
+An operator can restore an explicitly selected backup with:
+
+```bash
+bash /var/www/nexorapro/current/deploy/restore-database-backup.sh \
+  /var/www/nexorapro/shared/data/migration-backups/BACKUP.db
+```
+
+The restore helper validates the path and integrity, stops PM2, creates a fresh
+pre-restore recovery copy, restores the selected database, restarts the app, and
+checks `/api/health`.

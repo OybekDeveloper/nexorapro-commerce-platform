@@ -10,21 +10,3 @@ export const products: Product[] = [
   { id: "prd_007", name: "AirPods Pro 3", sku: "APL-APP3-USB-C", category: "Audio", costPrice: 2750000, price: 3499000, compareAtPrice: 3799000, stock: 32, status: "published", visibleOnStorefront: true, languages: ["UZ", "RU"], sales: 226 },
   { id: "prd_008", name: "Magic Keyboard", sku: "APL-MGK-US-WH", category: "Aksessuar", costPrice: 1400000, price: 1899000, stock: 0, status: "archived", visibleOnStorefront: false, languages: ["UZ", "RU", "EN"], sales: 47 },
 ];
-
-export const salesData = [
-  { day: "01", revenue: 42, orders: 14 },
-  { day: "05", revenue: 58, orders: 19 },
-  { day: "09", revenue: 51, orders: 17 },
-  { day: "13", revenue: 76, orders: 25 },
-  { day: "17", revenue: 68, orders: 21 },
-  { day: "21", revenue: 94, orders: 31 },
-  { day: "25", revenue: 88, orders: 28 },
-  { day: "30", revenue: 112, orders: 36 },
-];
-
-export const categoryData = [
-  { name: "Smartfon", value: 48 },
-  { name: "Noutbuk", value: 27 },
-  { name: "Audio", value: 16 },
-  { name: "Boshqa", value: 9 },
-];

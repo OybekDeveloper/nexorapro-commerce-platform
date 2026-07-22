@@ -45,6 +45,9 @@ jobs:
           NEXORAPRO_DB_PATH: ${{ runner.temp }}/nexorapro-build.db
         run: npm run build
 
+      - name: Run integration tests
+        run: npm run test:integration
+
       - name: Package standalone application
         env:
           RELEASE_DIR: ${{ runner.temp }}/nexorapro-release

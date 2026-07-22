@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 const quote = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireApiUser("admin");
     const rows = listOrders().map((order) => [order.id, order.createdAt, order.customer, order.channel, order.payment, order.status, order.subtotal, order.discount, order.total].map(quote).join(","));
@@ -18,6 +18,6 @@ export async function GET() {
       },
     });
   } catch (error) {
-    return apiError(error);
+    return apiError(error, request);
   }
 }

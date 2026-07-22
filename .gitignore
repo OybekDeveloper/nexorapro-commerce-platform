@@ -44,6 +44,7 @@ data/*.db
 data/*.db-*
 data/*.sqlite
 data/*.sqlite-*
+data/migration-backups/
 
 # vercel
 .vercel

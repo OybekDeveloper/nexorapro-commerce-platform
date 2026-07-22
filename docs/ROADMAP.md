@@ -23,17 +23,18 @@
 
 ## Milestone 2.1 — Authentication and production database
 
-- [ ] Add PostgreSQL and migrations
+- [x] Add versioned SQLite migrations with pre-migration snapshots
+- [ ] Add PostgreSQL for multi-instance scale
 - [ ] Add organization, store, user, role, and permission models
 - [x] Implement authentication and database session handling
-- [ ] Protect admin routes and server actions
-- [ ] Add audit logs and seed accounts
+- [x] Protect admin routes and every mutation boundary
+- [x] Add audit logs and environment-seeded admin account
 
 ## Milestone 3 — Catalog and multilingual publishing
 
-- [ ] CRUD for products, variants, categories, and collections
-- [ ] Product media upload and optimization
-- [ ] UZ/RU/EN translations with completeness state
+- [x] CRUD and bulk lifecycle for products and variants
+- [x] Persistent product media upload with MIME/size validation
+- [x] UZ/RU/EN translations with completeness state
 - [ ] Draft, review, scheduled publish, and archive lifecycle
 - [ ] Storefront visibility by store and locale
 
@@ -41,15 +42,15 @@
 
 - [ ] Supplier and purchase-order management
 - [ ] Goods receipt with purchase cost
-- [ ] Append-only stock movement ledger
-- [ ] Warehouses, branches, transfers, reservations
-- [ ] Low-stock rules and reconciliation
+- [x] Append-only stock movement ledger
+- [x] Inventory locations and stock reservations
+- [x] Low-stock, available-stock, valuation and reconciliation reports
 
 ## Milestone 5 — Extended orders and payments
 
 - [x] Browser-persistent cart and API-backed checkout
 - [x] Core order workflow and status updates
-- [ ] Append-only order status history
+- [x] Audited order status transitions and cancellation stock restoration
 - [ ] Payment provider integration with idempotency
 - [ ] Delivery provider integration
 - [ ] Returns, refunds, and invoices
@@ -58,7 +59,7 @@
 
 - [x] Database-derived revenue, gross profit, order count, stock, and product sales totals
 - [x] Category sales API response
-- [ ] Full channel and date-range comparison UI
+- [x] Full channel and date-range reporting UI
 - [ ] Conversion funnel and inventory turnover
 - [x] CSV order export
 - [ ] PDF export
@@ -66,9 +67,9 @@
 
 ## Milestone 7 — Production hardening
 
-- [ ] Unit, integration, and end-to-end tests
-- [ ] Accessibility and performance audit
-- [ ] Rate limits, security headers, and dependency review
-- [ ] Logging, error tracking, uptime checks, and alerts
-- [ ] Backups and recovery drill
+- [x] Isolated production-server integration tests
+- [x] Deterministic database performance benchmark
+- [x] Rate limits, security headers, dependency review and structured API errors
+- [ ] External error tracking, uptime checks, and alerts
+- [x] Automatic migration backups and recovery script
 - [ ] Demo data, screenshots, video, live deployment, and `v1.0` release

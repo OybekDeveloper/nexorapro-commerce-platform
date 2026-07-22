@@ -76,6 +76,7 @@ export function CartPageContent() {
         discount,
         items: cartLines.map((line) => ({
           productId: line.product.id,
+          variantId: line.variant?.id,
           quantity: line.quantity,
         })),
       }),
@@ -230,9 +231,9 @@ export function CartPageContent() {
             className="overflow-hidden rounded-[1.75rem] bg-white"
           >
             <div className="divide-y divide-black/[0.06]">
-              {cartLines.map(({ product, quantity }) => (
+              {cartLines.map(({ product, variant, quantity, unitPrice }) => (
                 <article
-                  key={product.id}
+                  key={`${product.id}:${variant?.id ?? ""}`}
                   data-motion-card
                   className="grid gap-5 p-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:p-7"
                 >
@@ -263,12 +264,12 @@ export function CartPageContent() {
                           {product.name}
                         </Link>
                         <p className="mt-1 text-sm text-zinc-500">
-                          {product.specs.slice(0, 3).join(" · ")}
+                          {[variant?.title, ...product.specs.slice(0, 3)].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                       <button
                         type="button"
-                        onClick={() => removeFromCart(product.id)}
+                        onClick={() => removeFromCart(product.id, variant?.id)}
                         className="inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
                         aria-label={`${product.name}: ${String(labels.remove)}`}
                       >
@@ -282,7 +283,7 @@ export function CartPageContent() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateQuantity(product.id, quantity - 1)
+                              updateQuantity(product.id, quantity - 1, variant?.id)
                             }
                             className="inline-flex size-9 cursor-pointer items-center justify-center rounded-l-full hover:bg-zinc-100"
                             aria-label={String(labels.decrease)}
@@ -295,7 +296,7 @@ export function CartPageContent() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateQuantity(product.id, quantity + 1)
+                              updateQuantity(product.id, quantity + 1, variant?.id)
                             }
                             className="inline-flex size-9 cursor-pointer items-center justify-center rounded-r-full hover:bg-zinc-100"
                             aria-label={String(labels.increase)}
@@ -307,7 +308,7 @@ export function CartPageContent() {
                       <div className="text-right">
                         <p className="text-xs text-zinc-500">{String(labels.total)}</p>
                         <p className="mt-1 text-lg font-semibold">
-                          {formatStoreMoney(product.price * quantity)}
+                          {formatStoreMoney(unitPrice * quantity)}
                         </p>
                       </div>
                     </div>

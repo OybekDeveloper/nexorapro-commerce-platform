@@ -11,15 +11,16 @@ import { animateAddButton } from "@/lib/storefront-motion";
 import { cn } from "@/lib/utils";
 
 const copy = {
-  UZ: { price: "Narxi", added: "Qo‘shildi", add: "savatga qo‘shish" },
-  RU: { price: "Цена", added: "Добавлено", add: "добавить в корзину" },
-  EN: { price: "Price", added: "Added", add: "add to cart" },
+  UZ: { price: "Narxi", added: "Qo‘shildi", add: "savatga qo‘shish", select: "variantni tanlash" },
+  RU: { price: "Цена", added: "Добавлено", add: "добавить в корзину", select: "выбрать вариант" },
+  EN: { price: "Price", added: "Added", add: "add to cart", select: "select a variant" },
 } satisfies Record<StoreLocale, Record<string, string>>;
 
 export function ProductCard({ product }: { product: StoreProduct }) {
   const { addToCart, locale, products } = useStore();
   const localizedProduct = products.find((item) => item.id === product.id) ?? product;
   const labels = copy[locale];
+  const hasVariants = (localizedProduct.variants?.filter((variant) => variant.status === "active").length ?? 0) > 0;
   const [added, setAdded] = useState(false);
   const resetTimerRef = useRef<number | null>(null);
 
@@ -28,6 +29,7 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   }, []);
 
   const handleAdd = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (hasVariants) return;
     addToCart(localizedProduct.id);
     setAdded(true);
     void animateAddButton(event.currentTarget);
@@ -53,9 +55,9 @@ export function ProductCard({ product }: { product: StoreProduct }) {
         <div className="mt-4 flex flex-wrap gap-1.5">{localizedProduct.specs.slice(0, 3).map((spec) => <span key={spec} className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">{spec}</span>)}</div>
         <div className="mt-auto flex items-end justify-between gap-4 border-t border-black/5 pt-5">
           <div><p className="text-xs text-zinc-500">{labels.price}</p><p className="mt-1 font-semibold text-brand">{formatStoreMoney(localizedProduct.price)}</p>{localizedProduct.compareAtPrice && <p className="mt-0.5 text-xs text-zinc-500 line-through">{formatStoreMoney(localizedProduct.compareAtPrice)}</p>}</div>
-          <button type="button" onClick={handleAdd} className={cn("inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-sm font-semibold text-white transition-[opacity,background-color,min-width] hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2", added && "min-w-[112px] bg-[#0c806a]")} aria-label={`${localizedProduct.name}: ${labels.add}`} aria-live="polite">
+          {hasVariants ? <Link href={`/product/${localizedProduct.slug}`} className="inline-flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-full bg-brand px-3 text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2" aria-label={`${localizedProduct.name}: ${labels.select}`}><ShoppingBag className="size-4" /></Link> : <button type="button" onClick={handleAdd} className={cn("inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-sm font-semibold text-white transition-[opacity,background-color,min-width] hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2", added && "min-w-[112px] bg-[#0c806a]")} aria-label={`${localizedProduct.name}: ${labels.add}`} aria-live="polite">
             {added ? <><Check className="size-4" /><span>{labels.added}</span></> : <ShoppingBag className="size-4" />}
-          </button>
+          </button>}
         </div>
       </div>
     </article>

@@ -10,13 +10,14 @@ import { hashSync } from "bcryptjs";
 import { products as adminSeedProducts } from "@/lib/mock-data";
 import { storefrontProducts } from "@/lib/storefront-data";
 
-const databasePath = process.env.NEXORAPRO_DB_PATH ?? path.join(process.cwd(), "data", "nexora.db");
-fs.mkdirSync(path.dirname(databasePath), { recursive: true });
+const databasePath = process.env.NEXORAPRO_DB_PATH ?? path.join(/*turbopackIgnore: true*/ process.cwd(), "data", "nexora.db");
+fs.mkdirSync(/*turbopackIgnore: true*/ path.dirname(databasePath), { recursive: true });
 
 const database = new Database(databasePath);
 database.pragma("journal_mode = WAL");
 database.pragma("foreign_keys = ON");
 database.pragma("busy_timeout = 5000");
+database.pragma("synchronous = NORMAL");
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -138,6 +139,199 @@ database.exec(`
   CREATE INDEX IF NOT EXISTS idx_movements_created ON inventory_movements(created_at DESC);
 `);
 
+type Migration = {
+  version: number;
+  name: string;
+  run: () => void;
+};
+
+database.exec(`
+  CREATE TABLE IF NOT EXISTS schema_migrations (
+    version INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+
+function hasColumn(table: string, column: string) {
+  const columns = database.pragma(`table_info(${table})`) as Array<{ name: string }>;
+  return columns.some((item) => item.name === column);
+}
+
+function addColumn(table: string, definition: string) {
+  const column = definition.trim().split(/\s+/, 1)[0];
+  if (!hasColumn(table, column)) database.exec(`ALTER TABLE ${table} ADD COLUMN ${definition}`);
+}
+
+const migrations: Migration[] = [
+  {
+    version: 2,
+    name: "product_catalog_inventory_audit",
+    run: () => {
+      addColumn("products", "version INTEGER NOT NULL DEFAULT 1");
+      addColumn("products", "deleted_at TEXT");
+      addColumn("products", "deleted_by TEXT");
+      addColumn("inventory_movements", "variant_id TEXT");
+      addColumn("inventory_movements", "location_id TEXT");
+      addColumn("inventory_movements", "balance_after INTEGER");
+      addColumn("inventory_movements", "reference_type TEXT");
+      addColumn("inventory_movements", "reference_id TEXT");
+      addColumn("inventory_movements", "idempotency_key TEXT");
+      addColumn("inventory_movements", "actor_user_id TEXT");
+      addColumn("order_items", "variant_id TEXT");
+      addColumn("order_items", "variant_title TEXT");
+
+      database.exec(`
+        CREATE TABLE IF NOT EXISTS product_variants (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          sku TEXT NOT NULL UNIQUE,
+          barcode TEXT UNIQUE,
+          cost_price INTEGER NOT NULL DEFAULT 0 CHECK(cost_price >= 0),
+          price INTEGER NOT NULL CHECK(price > 0),
+          compare_at_price INTEGER CHECK(compare_at_price IS NULL OR compare_at_price > 0),
+          stock INTEGER NOT NULL DEFAULT 0 CHECK(stock >= 0),
+          status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'disabled')),
+          options_json TEXT NOT NULL DEFAULT '{}',
+          position INTEGER NOT NULL DEFAULT 0,
+          version INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          deleted_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS product_media (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+          variant_id TEXT REFERENCES product_variants(id) ON DELETE CASCADE,
+          media_type TEXT NOT NULL DEFAULT 'image' CHECK(media_type IN ('image', 'video')),
+          url TEXT NOT NULL,
+          mime_type TEXT,
+          alt_text TEXT NOT NULL DEFAULT '',
+          width INTEGER,
+          height INTEGER,
+          size_bytes INTEGER,
+          position INTEGER NOT NULL DEFAULT 0,
+          is_primary INTEGER NOT NULL DEFAULT 0 CHECK(is_primary IN (0, 1)),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS inventory_locations (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL UNIQUE,
+          code TEXT NOT NULL UNIQUE,
+          is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS inventory_reservations (
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL REFERENCES products(id),
+          variant_id TEXT REFERENCES product_variants(id),
+          quantity INTEGER NOT NULL CHECK(quantity > 0),
+          reference_type TEXT NOT NULL,
+          reference_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'released', 'committed', 'expired')),
+          expires_at TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS audit_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+          action TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          before_json TEXT,
+          after_json TEXT,
+          request_id TEXT,
+          ip_address TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_products_admin_list
+          ON products(deleted_at, status, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_products_category_status
+          ON products(category, status, deleted_at);
+        CREATE INDEX IF NOT EXISTS idx_products_search_name
+          ON products(name COLLATE NOCASE);
+        CREATE INDEX IF NOT EXISTS idx_product_variants_product
+          ON product_variants(product_id, deleted_at, position);
+        CREATE INDEX IF NOT EXISTS idx_product_media_product
+          ON product_media(product_id, position);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_product_media_primary
+          ON product_media(product_id) WHERE is_primary = 1 AND variant_id IS NULL;
+        CREATE INDEX IF NOT EXISTS idx_inventory_reservations_product
+          ON inventory_reservations(product_id, variant_id, status, expires_at);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_movement_idempotency
+          ON inventory_movements(idempotency_key) WHERE idempotency_key IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS idx_audit_entity
+          ON audit_logs(entity_type, entity_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_audit_actor
+          ON audit_logs(actor_user_id, created_at DESC);
+
+        INSERT OR IGNORE INTO inventory_locations (id, name, code)
+        VALUES ('loc_main', 'Asosiy ombor', 'MAIN');
+      `);
+    },
+  },
+  {
+    version: 3,
+    name: "reporting_order_snapshots",
+    run: () => {
+      addColumn("order_items", "cost_price INTEGER NOT NULL DEFAULT 0");
+      database.exec(`
+        UPDATE order_items
+        SET cost_price = COALESCE((SELECT cost_price FROM products WHERE products.id = order_items.product_id), 0)
+        WHERE cost_price = 0;
+        CREATE INDEX IF NOT EXISTS idx_orders_status_created ON orders(status, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_orders_channel_created ON orders(channel, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_order_items_product ON order_items(product_id, order_id);
+        CREATE INDEX IF NOT EXISTS idx_order_items_variant ON order_items(variant_id, order_id);
+      `);
+    },
+  },
+  {
+    version: 4,
+    name: "product_pagination_covering_indexes",
+    run: () => {
+      database.exec(`
+        DROP INDEX IF EXISTS idx_products_admin_list;
+        CREATE INDEX idx_products_admin_list
+          ON products(deleted_at, updated_at DESC, id ASC);
+        CREATE INDEX IF NOT EXISTS idx_products_admin_status
+          ON products(deleted_at, status, updated_at DESC, id ASC);
+      `);
+    },
+  },
+];
+
+const appliedMigrations = database.prepare("SELECT version FROM schema_migrations").all() as Array<{ version: number }>;
+const appliedVersions = new Set(appliedMigrations.map(({ version }) => version));
+const pendingMigrations = migrations.filter((migration) => !appliedVersions.has(migration.version));
+
+if (pendingMigrations.length > 0 && databasePath !== ":memory:" && fs.existsSync(/*turbopackIgnore: true*/ databasePath) && fs.statSync(/*turbopackIgnore: true*/ databasePath).size > 0) {
+  const backupDirectory = process.env.DB_MIGRATION_BACKUP_DIR ?? path.join(/*turbopackIgnore: true*/ path.dirname(databasePath), "migration-backups");
+  fs.mkdirSync(/*turbopackIgnore: true*/ backupDirectory, { recursive: true, mode: 0o750 });
+  const stamp = new Date().toISOString().replaceAll(":", "-");
+  const backupPath = path.join(/*turbopackIgnore: true*/ backupDirectory, `nexora-before-v${pendingMigrations[0].version}-${stamp}-${randomUUID().slice(0, 8)}.db`);
+  database.prepare("VACUUM INTO ?").run(backupPath);
+  fs.chmodSync(/*turbopackIgnore: true*/ backupPath, 0o600);
+}
+
+const runMigrations = database.transaction(() => {
+  for (const migration of pendingMigrations) {
+    migration.run();
+    database.prepare("INSERT INTO schema_migrations (version, name) VALUES (?, ?)").run(migration.version, migration.name);
+  }
+});
+
+runMigrations();
+
 const orderColumns = database.pragma("table_info(orders)") as Array<{ name: string }>;
 if (!orderColumns.some((column) => column.name === "address")) {
   database.exec("ALTER TABLE orders ADD COLUMN address TEXT NOT NULL DEFAULT ''");
@@ -226,7 +420,7 @@ const seedOrders = database.transaction(() => {
   const count = database.prepare("SELECT COUNT(*) AS count FROM orders").get() as { count: number };
   if (count.count > 0) return;
   const orderInsert = database.prepare("INSERT INTO orders (id, customer, phone, channel, payment, status, subtotal, discount, total, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, datetime('now', ?))");
-  const itemInsert = database.prepare("INSERT INTO order_items (order_id, product_id, product_name, sku, price, quantity) VALUES (?, ?, ?, ?, ?, ?)");
+  const itemInsert = database.prepare("INSERT INTO order_items (order_id, product_id, product_name, sku, cost_price, price, quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
   const samples = [
     ["#NX-1062", "Sardor Karimov", "+998 90 123 45 67", "Online", "card", "new", "iPhone 17 Pro", 1, "-8 minutes"],
     ["#NX-1061", "Madina Islomova", "+998 93 612 08 21", "Online", "click", "paid", "AirPods Pro 3", 2, "-32 minutes"],
@@ -234,10 +428,10 @@ const seedOrders = database.transaction(() => {
     ["#NX-1059", "Kamola Rahimova", "+998 97 221 77 03", "Online", "payme", "shipping", "iPad Air 11 M4", 1, "-90 minutes"],
   ] as const;
   for (const sample of samples) {
-    const product = database.prepare("SELECT id, name, sku, price FROM products WHERE name = ?").get(sample[6]) as { id: string; name: string; sku: string; price: number };
+    const product = database.prepare("SELECT id, name, sku, cost_price, price FROM products WHERE name = ?").get(sample[6]) as { id: string; name: string; sku: string; cost_price: number; price: number };
     const subtotal = product.price * sample[7];
     orderInsert.run(sample[0], sample[1], sample[2], sample[3], sample[4], sample[5], subtotal, subtotal, sample[8]);
-    itemInsert.run(sample[0], product.id, product.name, product.sku, product.price, sample[7]);
+    itemInsert.run(sample[0], product.id, product.name, product.sku, product.cost_price, product.price, sample[7]);
   }
 });
 

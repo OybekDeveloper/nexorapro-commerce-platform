@@ -43,7 +43,12 @@ if ! grep -Eq '^NEXORAPRO_DB_PATH=/var/www/nexorapro/shared/data/nexora\.db$' "$
   exit 1
 fi
 
-mkdir -p "$RELEASES_DIR" "$SHARED_DIR/data"
+if ! grep -Eq '^UPLOAD_DIR=/var/www/nexorapro/shared/uploads$' "$ENV_UPLOAD_PATH"; then
+  echo "PRODUCTION_ENV_FILE must use the persistent shared upload path." >&2
+  exit 1
+fi
+
+install -d -m 750 "$RELEASES_DIR" "$SHARED_DIR/data" "$SHARED_DIR/uploads" "$SHARED_DIR/uploads/products"
 
 if [ -L "$CURRENT_LINK" ]; then
   PREVIOUS_RELEASE="$(readlink -f "$CURRENT_LINK")"
