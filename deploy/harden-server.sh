@@ -53,7 +53,7 @@ if [ ! -s "$authorized_keys" ]; then
   exit 1
 fi
 
-for command_name in apt-get nginx sshd systemctl ufw; do
+for command_name in apt-get getent nginx sshd systemctl timeout ufw; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
     echo "Required server command is missing: $command_name" >&2
     exit 1
@@ -67,6 +67,28 @@ ufw default allow outgoing
 ufw allow OpenSSH
 ufw allow 'Nginx Full'
 ufw --force enable
+
+systemctl restart systemd-resolved
+resolvectl flush-caches || true
+if command -v fail2ban-client >/dev/null 2>&1; then
+  fail2ban-client unban --all >/dev/null 2>&1 || true
+fi
+
+egress_ready=false
+for _attempt in 1 2 3; do
+  if timeout 10 getent ahostsv4 archive.ubuntu.com >/dev/null 2>&1; then
+    egress_ready=true
+    break
+  fi
+  sleep 2
+done
+
+if [ "$egress_ready" != true ]; then
+  echo "Outbound DNS is still blocked after applying the UFW allow-outgoing policy." >&2
+  echo "This points to an Eskiz network/firewall rule outside the VM." >&2
+  ufw status verbose >&2 || true
+  exit 4
+fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -96,9 +118,6 @@ sshd -t
 systemctl reload ssh
 
 systemctl enable --now fail2ban
-if command -v fail2ban-client >/dev/null 2>&1; then
-  fail2ban-client unban --all >/dev/null 2>&1 || true
-fi
 
 install -d -m 750 -o "$DEPLOY_USER" -g "$DEPLOY_USER" \
   "$APP_ROOT/shared/data/migration-backups" \
