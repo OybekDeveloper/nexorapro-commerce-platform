@@ -53,7 +53,7 @@ database.exec(`
     sku TEXT NOT NULL UNIQUE,
     category TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
-    image TEXT NOT NULL DEFAULT '/products/iphone-17-pro.png',
+    image TEXT NOT NULL DEFAULT '/products/iphone-17-pro.webp',
     image_alt TEXT NOT NULL DEFAULT '',
     cost_price INTEGER NOT NULL DEFAULT 0 CHECK(cost_price >= 0),
     price INTEGER NOT NULL CHECK(price > 0),
@@ -308,7 +308,40 @@ const migrations: Migration[] = [
       `);
     },
   },
-];
+    {
+      version: 5,
+      name: "default_product_images_webp",
+    run: () => {
+      const replacements = [
+        ["/products/iphone-17-pro.png", "/products/iphone-17-pro.webp"],
+        ["/products/macbook-air-m5.png", "/products/macbook-air-m5.webp"],
+        ["/products/ipad-air-m4.png", "/products/ipad-air-m4.webp"],
+        ["/products/airpods-pro-3.png", "/products/airpods-pro-3.webp"],
+      ] as const;
+      const updateProduct = database.prepare("UPDATE products SET image = ?, updated_at = CURRENT_TIMESTAMP WHERE image = ?");
+      const updateMedia = database.prepare("UPDATE product_media SET url = ?, updated_at = CURRENT_TIMESTAMP WHERE url = ?");
+
+      for (const [from, to] of replacements) {
+        updateProduct.run(to, from);
+        updateMedia.run(to, from);
+        }
+      },
+    },
+    {
+      version: 6,
+      name: "default_video_posters_webp",
+      run: () => {
+        const replacements = [
+          ["/products/videos/iphone-17-pro-forged-plateau.jpg", "/products/videos/iphone-17-pro-forged-plateau.webp"],
+          ["/products/videos/iphone-17-pro-camera-center-stage.jpg", "/products/videos/iphone-17-pro-camera-center-stage.webp"],
+        ] as const;
+        const updateVideoPoster = database.prepare("UPDATE products SET video_poster_url = ?, updated_at = CURRENT_TIMESTAMP WHERE video_poster_url = ?");
+        for (const [from, to] of replacements) {
+          updateVideoPoster.run(to, from);
+        }
+      },
+    },
+  ];
 
 const appliedMigrations = database.prepare("SELECT version FROM schema_migrations").all() as Array<{ version: number }>;
 const appliedVersions = new Set(appliedMigrations.map(({ version }) => version));
@@ -391,7 +424,7 @@ const seedProducts = database.transaction(() => {
       sku: adminProduct.sku,
       category: adminProduct.category,
       description: storeProduct?.description ?? `${adminProduct.name} uchun premium mahsulot sahifasi.`,
-      image: storeProduct?.image ?? "/products/iphone-17-pro.png",
+      image: storeProduct?.image ?? "/products/iphone-17-pro.webp",
       imageAlt: storeProduct?.imageAlt ?? adminProduct.name,
       costPrice: adminProduct.costPrice,
       price: adminProduct.price,

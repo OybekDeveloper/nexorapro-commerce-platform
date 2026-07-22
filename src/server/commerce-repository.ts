@@ -622,7 +622,7 @@ export function createProduct(input: CreateProductInput, context: MutationContex
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?)
     `).run(
       id, slug, primary.name, input.sku, input.category, primary.description,
-      primaryMedia?.url ?? input.image ?? "/products/iphone-17-pro.png", primary.imageAlt,
+      primaryMedia?.url ?? input.image ?? "/products/iphone-17-pro.webp", primary.imageAlt,
       input.costPrice, input.price, input.compareAtPrice ?? null, stock,
       input.status, Number(visible), JSON.stringify(Object.keys(translations)),
       input.videoUrl || null, input.videoPosterUrl || null, primary.badge || null,

@@ -97,14 +97,14 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
   const toastRef = useRef<HTMLDivElement>(null);
-  const navigatingRef = useRef(false);
   const firstRenderRef = useRef(true);
   const toastTimerRef = useRef<number | null>(null);
+  const prefetchedRef = useRef<Set<string>>(new Set());
   const [toast, setToast] = useState<ToastState>(null);
 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
-    if (!wrapper || pathname.startsWith("/admin") || !canUseStoreMotion()) return;
+    if (!wrapper || pathname.startsWith("/admin") || !canUseStoreMotion() || prefersCompactMotion()) return;
 
     const transfer = readSharedProduct(pathname);
     const sharedTarget = transfer
@@ -170,7 +170,6 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   }, [pathname]);
 
   useEffect(() => {
-    navigatingRef.current = false;
     const wrapper = wrapperRef.current;
     const page = wrapper?.querySelector<HTMLElement>("main#main-content");
     if (!wrapper || !page || pathname.startsWith("/admin") || !canUseStoreMotion()) return;
@@ -235,7 +234,14 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
 
       const revealTargets = Array.from(page.querySelectorAll<HTMLElement>("[data-motion-reveal]"))
         .filter((target) => !target.closest("[data-motion-hero]") && !target.querySelector("img"));
-      revealTargets.forEach((target) => animatedTargets.add(target));
+      const cardTargets = Array.from(page.querySelectorAll<HTMLElement>("[data-motion-card]"))
+        .filter((target) => !target.closest("[data-motion-hero]"));
+      const motionTargets = [...revealTargets, ...cardTargets]
+        .filter((target, index, list) => list.indexOf(target) === index)
+        // Mobile scroll should feel alive without scheduling too many tweens on
+        // low-memory phones. Desktop keeps the full set.
+        .slice(0, compact ? 18 : undefined);
+      motionTargets.forEach((target) => animatedTargets.add(target));
 
       const reveal = (target: HTMLElement, index = 0) => {
         if (target.dataset.motionPlayed === "true") return;
@@ -243,8 +249,8 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
         gsap.fromTo(target, { autoAlpha: 0, y: compact ? 10 : 16 }, {
           autoAlpha: 1,
           y: 0,
-          duration: compact ? 0.3 : 0.38,
-          delay: Math.min(index % 3, 2) * (compact ? 0.018 : 0.03),
+          duration: compact ? 0.24 : 0.38,
+          delay: Math.min(index % 3, 2) * (compact ? 0.012 : 0.03),
           ease: "power3.out",
           clearProps: "transform,opacity,visibility,willChange",
         });
@@ -259,7 +265,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
         });
       }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
 
-      revealTargets.forEach((target) => observer?.observe(target));
+      motionTargets.forEach((target) => observer?.observe(target));
     }).catch(() => {
       // Motion is progressive enhancement; navigation and content remain usable.
     });
@@ -275,20 +281,22 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   }, [pathname]);
 
   useEffect(() => {
-    navigatingRef.current = false;
-
     const flipWarmTimer = window.setTimeout(() => {
-      if (document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
+      if (!prefersCompactMotion() && document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
     }, 250);
 
     const warmDestination = (event: PointerEvent) => {
+      if (event.pointerType === "touch" || prefersCompactMotion()) return;
       const target = event.target as Element | null;
       const anchor = target?.closest<HTMLAnchorElement>("a[href]");
       if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       const url = new URL(anchor.href, window.location.href);
       if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return;
       if (anchor.dataset.sharedProduct) void loadFlip().catch(() => undefined);
-      router.prefetch(`${url.pathname}${url.search}`);
+      const href = `${url.pathname}${url.search}`;
+      if (prefetchedRef.current.has(href)) return;
+      prefetchedRef.current.add(href);
+      router.prefetch(href);
     };
 
     const onNavigate = (event: MouseEvent) => {
@@ -301,37 +309,17 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       if (url.origin !== window.location.origin) return;
       const sameDocument = url.pathname === window.location.pathname && url.search === window.location.search;
       if (sameDocument) return;
-      if (!canUseStoreMotion() || navigatingRef.current) return;
+      if (!canUseStoreMotion() || prefersCompactMotion()) return;
 
-      const sharedTransfer = rememberSharedProduct(anchor);
+      const sharedTransfer = anchor.dataset.sharedProduct ? rememberSharedProduct(anchor) : null;
       if (sharedTransfer) createImmediateSharedOverlay(sharedTransfer);
-      event.preventDefault();
-      navigatingRef.current = true;
-
-      const destination = `${url.pathname}${url.search}${url.hash}`;
-      const page = wrapperRef.current?.querySelector<HTMLElement>("main#main-content");
-      router.push(destination);
-      if (!page) {
-        return;
-      }
-
-      void loadGsap().then((gsap) => {
-        gsap.killTweensOf(page);
-        gsap.to(page, {
-          autoAlpha: 0.94,
-          x: prefersCompactMotion() ? -8 : -12,
-          duration: prefersCompactMotion() ? 0.1 : 0.14,
-          ease: "power2.in",
-          overwrite: true,
-        });
-      }).catch(() => undefined);
     };
 
-    document.addEventListener("pointerdown", warmDestination, true);
+    document.addEventListener("pointerover", warmDestination, true);
     document.addEventListener("click", onNavigate, true);
     return () => {
       window.clearTimeout(flipWarmTimer);
-      document.removeEventListener("pointerdown", warmDestination, true);
+      document.removeEventListener("pointerover", warmDestination, true);
       document.removeEventListener("click", onNavigate, true);
     };
   }, [pathname, router]);

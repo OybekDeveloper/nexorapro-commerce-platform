@@ -5,7 +5,34 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ArrowRight, LockKeyhole, Mail, UserRound } from "lucide-react";
 
+import { AUTH_SESSION_CHANGED_EVENT } from "@/components/storefront/store-provider";
 import type { AuthUser } from "@/lib/auth";
+
+type AuthErrorPayload = {
+  error?: string | {
+    message?: unknown;
+    code?: unknown;
+    details?: Array<{ message?: unknown }> | Record<string, unknown>;
+  };
+};
+
+function readAuthError(payload: AuthErrorPayload | null, fallback: string) {
+  const error = payload?.error;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const detail = Array.isArray(error.details)
+      ? error.details.find((item) => typeof item.message === "string")?.message
+      : undefined;
+    if (typeof detail === "string") return detail;
+    if (typeof error.message === "string") return error.message;
+  }
+  return fallback;
+}
+
+function readAuthErrorCode(payload: AuthErrorPayload | null) {
+  const error = payload?.error;
+  return error && typeof error === "object" && typeof error.code === "string" ? error.code : null;
+}
 
 export function AuthForm({ admin = false, next = "/", initialMode = "login" }: { admin?: boolean; next?: string; initialMode?: "login" | "register" }) {
   const router = useRouter();
@@ -27,8 +54,13 @@ export function AuthForm({ admin = false, next = "/", initialMode = "login" }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(mode === "register" && !admin ? { name, email, password } : { email, password }),
       });
-      const payload = await response.json() as { user?: AuthUser; error?: string };
-      if (!response.ok) throw new Error(payload.error || "Kirish amalga oshmadi");
+      const payload = await response.json().catch(() => null) as ({ user?: AuthUser } & AuthErrorPayload) | null;
+      if (!response.ok) {
+        const message = readAuthError(payload, mode === "register" && !admin ? "Akkaunt yaratilmadi" : "Kirish amalga oshmadi");
+        if (!admin && mode === "register" && readAuthErrorCode(payload) === "EMAIL_EXISTS") setMode("login");
+        throw new Error(message);
+      }
+      window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
       router.replace(admin ? "/admin" : next);
       router.refresh();
     } catch (cause) {
