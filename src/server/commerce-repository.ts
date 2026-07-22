@@ -16,6 +16,7 @@ import type {
 } from "@/lib/commerce";
 import type { ProductCategory, ProductLanguage, ProductTranslation } from "@/lib/types";
 import { database } from "@/server/database";
+import { HttpError } from "@/server/http";
 
 type ProductRow = {
   id: string;
@@ -356,8 +357,8 @@ export function createOrder(input: CreateOrderInput, userId?: string) {
     for (const item of input.items) requested.set(item.productId, (requested.get(item.productId) ?? 0) + item.quantity);
     const lines = [...requested].map(([productId, quantity]) => {
       const product = getProduct(productId);
-      if (!product || product.status !== "published") throw new Error("Mahsulot sotuv uchun mavjud emas");
-      if (product.stock < quantity) throw new Error(`${product.name}: omborda faqat ${product.stock} dona mavjud`);
+      if (!product || product.status !== "published") throw new HttpError(409, "Mahsulot sotuv uchun mavjud emas");
+      if (product.stock < quantity) throw new HttpError(409, `${product.name}: omborda faqat ${product.stock} dona mavjud`);
       return { product, quantity };
     });
     const subtotal = lines.reduce((sum, line) => sum + line.product.price * line.quantity, 0);
@@ -389,7 +390,7 @@ export function createOrder(input: CreateOrderInput, userId?: string) {
     for (const line of lines) {
       insertItem.run(id, line.product.id, line.product.name, line.product.sku, line.product.price, line.quantity);
       const stockResult = updateStock.run(line.quantity, line.quantity, line.product.id, line.quantity);
-      if (stockResult.changes !== 1) throw new Error(`${line.product.name}: qoldiq o‘zgardi, qayta urinib ko‘ring`);
+      if (stockResult.changes !== 1) throw new HttpError(409, `${line.product.name}: qoldiq o‘zgardi, qayta urinib ko‘ring`);
       movement.run(line.product.id, -line.quantity, `${id} sotuv`);
     }
     return getOrder(id)!;
@@ -413,9 +414,9 @@ export function listInventoryMovements() {
 export function createInventoryMovement(input: InventoryMovementInput) {
   return database.transaction(() => {
     const product = getProduct(input.productId);
-    if (!product) throw new Error("Mahsulot topilmadi");
+    if (!product) throw new HttpError(404, "Mahsulot topilmadi");
     const nextStock = product.stock + input.quantity;
-    if (nextStock < 0) throw new Error("Qoldiq manfiy bo‘lishi mumkin emas");
+    if (nextStock < 0) throw new HttpError(400, "Qoldiq manfiy bo‘lishi mumkin emas");
     database.prepare("UPDATE products SET stock = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(nextStock, input.productId);
     const info = database.prepare("INSERT INTO inventory_movements (product_id, type, quantity, location, note) VALUES (?, ?, ?, ?, ?)").run(input.productId, input.type, input.quantity, input.location, input.note);
     return database.prepare(`

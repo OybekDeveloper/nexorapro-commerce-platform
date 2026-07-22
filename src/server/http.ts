@@ -36,5 +36,7 @@ export function apiError(error: unknown) {
   if (error instanceof HttpError) return Response.json({ error: error.message }, { status: error.status });
   const message = error instanceof Error ? error.message : "Server xatosi";
   const conflict = /UNIQUE constraint failed/.test(message);
-  return Response.json({ error: conflict ? "Email, SKU yoki slug avvaldan mavjud" : message }, { status: conflict ? 409 : 400 });
+  if (conflict) return Response.json({ error: "Email, SKU yoki slug avvaldan mavjud" }, { status: 409 });
+  console.error("Unhandled API error", error);
+  return Response.json({ error: "Server xatosi" }, { status: 500 });
 }
