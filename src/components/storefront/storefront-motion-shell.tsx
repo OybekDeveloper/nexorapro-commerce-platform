@@ -104,7 +104,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
-    if (!wrapper || pathname.startsWith("/admin") || !canUseStoreMotion() || prefersCompactMotion()) return;
+    if (!wrapper || pathname.startsWith("/admin") || !canUseStoreMotion()) return;
 
     const transfer = readSharedProduct(pathname);
     const sharedTarget = transfer
@@ -144,7 +144,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       boxSizing: "border-box",
       zIndex: "90",
       contain: "layout paint",
-      willChange: "transform,width,height,border-radius",
+      willChange: compact ? "transform,border-radius" : "transform,width,height,border-radius",
     });
     if (!existingOverlay) document.body.appendChild(overlay);
     failSafeTimer = window.setTimeout(finish, 1_000);
@@ -153,10 +153,10 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       if (cancelled) return;
       gsap.killTweensOf(overlay);
       Flip.fit(overlay, sharedTarget, {
-        scale: false,
+        scale: compact,
         simple: true,
-        duration: compact ? 0.42 : 0.5,
-        ease: "power4.out",
+        duration: compact ? 0.32 : 0.5,
+        ease: compact ? "power3.out" : "power4.out",
         borderRadius: window.getComputedStyle(sharedTarget).borderRadius,
         overwrite: true,
         onComplete: finish,
@@ -286,11 +286,11 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const flipWarmTimer = window.setTimeout(() => {
-      if (!prefersCompactMotion() && document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
-    }, 250);
+      if (document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
+    }, prefersCompactMotion() ? 600 : 250);
 
     const warmDestination = (event: PointerEvent) => {
-      if (event.pointerType === "touch" || prefersCompactMotion()) return;
+      if (event.pointerType === "touch") return;
       const target = event.target as Element | null;
       const anchor = target?.closest<HTMLAnchorElement>("a[href]");
       if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
@@ -313,7 +313,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       if (url.origin !== window.location.origin) return;
       const sameDocument = url.pathname === window.location.pathname && url.search === window.location.search;
       if (sameDocument) return;
-      if (!canUseStoreMotion() || prefersCompactMotion()) return;
+      if (!canUseStoreMotion()) return;
 
       const sharedTransfer = anchor.dataset.sharedProduct ? rememberSharedProduct(anchor) : null;
       if (sharedTransfer) createImmediateSharedOverlay(sharedTransfer);
