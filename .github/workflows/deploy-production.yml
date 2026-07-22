@@ -42,6 +42,7 @@ jobs:
       - name: Build production bundle
         env:
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_YANDEX_MAPS_JS_API_KEY: ${{ secrets.NEXT_PUBLIC_YANDEX_MAPS_JS_API_KEY }}
           NEXORAPRO_DB_PATH: ${{ runner.temp }}/nexorapro-build.db
         run: npm run build
 
@@ -78,6 +79,15 @@ jobs:
           fi
 
           tar -C "$RELEASE_DIR" -czf "$ARCHIVE_PATH" .
+
+      - name: Preserve tested Linux release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: nexorapro-release-${{ github.sha }}
+          path: ${{ runner.temp }}/nexorapro-release.tgz
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
 
       - name: Validate deployment secrets
         env:
