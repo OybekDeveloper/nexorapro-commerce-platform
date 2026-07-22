@@ -178,9 +178,9 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     let observer: IntersectionObserver | null = null;
     const animatedTargets = new Set<HTMLElement>();
 
-    // The first paint is already server-rendered and visible. Running entrance
-    // animations on initial load only delays the LCP (hero image), so the page
-    // and hero flourishes are reserved for client-side navigations.
+    // Desktop first paint is already server-rendered and visible. Running full
+    // entrance animations there can delay LCP. On compact/mobile screens the
+    // lighter hero flourish is kept so the responsive UI does not feel static.
     const firstRender = firstRenderRef.current;
     firstRenderRef.current = false;
 
@@ -200,29 +200,33 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
           ease: "power3.out",
           clearProps: "transform,opacity,visibility,willChange",
         });
+      }
 
+      const shouldAnimateHero = !firstRender || compact;
+      if (shouldAnimateHero) {
         const hero = page.querySelector<HTMLElement>("[data-motion-hero]");
-        if (hero) {
-          const heroItems = Array.from(hero.querySelectorAll<HTMLElement>("[data-motion-hero-item]"));
-          const heroMedia = hero.querySelector<HTMLElement>("[data-motion-hero-media]");
+        const heroItems = hero ? Array.from(hero.querySelectorAll<HTMLElement>("[data-motion-hero-item]")) : [];
+        const heroMedia = hero?.querySelector<HTMLElement>("[data-motion-hero-media]");
+
+        if (hero && heroItems.length > 0) {
           animatedTargets.add(hero);
           heroItems.forEach((item) => animatedTargets.add(item));
           if (heroMedia) animatedTargets.add(heroMedia);
 
-          gsap.fromTo(heroItems, { autoAlpha: 0, y: compact ? 10 : 14 }, {
+          gsap.fromTo(heroItems, { autoAlpha: compact && firstRender ? 0.01 : 0, y: compact ? 10 : 14, willChange: "transform,opacity" }, {
             autoAlpha: 1,
             y: 0,
-            duration: compact ? 0.32 : 0.4,
-            stagger: compact ? 0.025 : 0.04,
+            duration: compact ? 0.28 : 0.4,
+            stagger: compact ? 0.018 : 0.04,
             ease: "power3.out",
             clearProps: "transform,opacity,visibility,willChange",
           });
           if (heroMedia) {
-            gsap.fromTo(heroMedia, { y: compact ? 10 : 14, scale: 1.012 }, {
+            gsap.fromTo(heroMedia, { y: compact ? 8 : 14, scale: compact ? 1.006 : 1.012, willChange: "transform" }, {
               y: 0,
               scale: 1,
-              duration: compact ? 0.38 : 0.46,
-              delay: 0.025,
+              duration: compact ? 0.32 : 0.46,
+              delay: compact ? 0.015 : 0.025,
               ease: "power3.out",
               clearProps: "transform,willChange",
             });
@@ -246,7 +250,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       const reveal = (target: HTMLElement, index = 0) => {
         if (target.dataset.motionPlayed === "true") return;
         target.dataset.motionPlayed = "true";
-        gsap.fromTo(target, { autoAlpha: 0, y: compact ? 10 : 16 }, {
+        gsap.fromTo(target, { autoAlpha: 0, y: compact ? 10 : 16, willChange: "transform,opacity" }, {
           autoAlpha: 1,
           y: 0,
           duration: compact ? 0.24 : 0.38,
