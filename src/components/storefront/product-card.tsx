@@ -16,7 +16,7 @@ const copy = {
   EN: { price: "Price", added: "Added", add: "add to cart", select: "select a variant" },
 } satisfies Record<StoreLocale, Record<string, string>>;
 
-export function ProductCard({ product }: { product: StoreProduct }) {
+export function ProductCard({ product, priority = false }: { product: StoreProduct; priority?: boolean }) {
   const { addToCart, locale, products } = useStore();
   const localizedProduct = products.find((item) => item.id === product.id) ?? product;
   const labels = copy[locale];
@@ -40,7 +40,17 @@ export function ProductCard({ product }: { product: StoreProduct }) {
   return (
     <article data-motion-card className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-black/[0.05] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[box-shadow,border-color] duration-200 hover:border-brand/25 hover:shadow-[0_18px_55px_rgba(16,161,132,0.1)] sm:p-5">
       <Link href={`/product/${localizedProduct.slug}`} data-shared-product={localizedProduct.slug} data-shared-product-frame className="relative aspect-[1.55/1] cursor-pointer overflow-hidden rounded-3xl bg-[#f5f5f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-        <Image src={localizedProduct.image} alt={localizedProduct.imageAlt} fill sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw" className="object-cover transition-transform duration-500 group-hover:scale-[1.025]" />
+        <Image
+          src={localizedProduct.image}
+          alt={localizedProduct.imageAlt}
+          fill
+          priority={priority}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+          sizes="(max-width: 640px) 92vw, (max-width: 768px) 46vw, (max-width: 1280px) 45vw, 31vw"
+          quality={72}
+          className="object-cover transition-transform duration-300 motion-safe:sm:group-hover:scale-[1.018]"
+        />
         {localizedProduct.badge && <span className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/85 px-3 py-1 text-[11px] font-semibold text-zinc-800 shadow-sm backdrop-blur-md">{localizedProduct.badge}</span>}
       </Link>
       <div className="flex flex-1 flex-col pt-5">

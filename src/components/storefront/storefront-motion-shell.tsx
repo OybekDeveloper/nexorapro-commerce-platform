@@ -28,6 +28,57 @@ type SharedProductTransfer = {
 
 type ToastState = { productId: string; nonce: number } | null;
 
+const SCROLL_POSITION_PREFIX = "nexora:scroll-position:";
+
+function currentScrollKey() {
+  return `${SCROLL_POSITION_PREFIX}${window.location.pathname}${window.location.search}`;
+}
+
+function saveScrollPosition() {
+  window.sessionStorage.setItem(
+    currentScrollKey(),
+    JSON.stringify({
+      x: window.scrollX,
+      y: window.scrollY,
+      timestamp: Date.now(),
+    }),
+  );
+}
+
+function readScrollPosition(key: string) {
+  const raw = window.sessionStorage.getItem(key);
+  if (!raw) return null;
+
+  try {
+    const position = JSON.parse(raw) as { x: number; y: number; timestamp: number };
+    if (Date.now() - position.timestamp > 1000 * 60 * 30) return null;
+    return Number.isFinite(position.x) && Number.isFinite(position.y) ? position : null;
+  } catch {
+    return null;
+  }
+}
+
+function waitForImageReady(image: HTMLImageElement) {
+  if (image.complete && image.naturalWidth > 0) {
+    return image.decode?.().catch(() => undefined) ?? Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      image.removeEventListener("load", done);
+      image.removeEventListener("error", done);
+      void (image.decode?.().catch(() => undefined) ?? Promise.resolve()).then(() => resolve());
+    };
+
+    image.addEventListener("load", done, { once: true });
+    image.addEventListener("error", done, { once: true });
+    window.setTimeout(done, 1_200);
+  });
+}
+
 function rememberSharedProduct(anchor: HTMLAnchorElement) {
   const slug = anchor.dataset.sharedProduct;
   const frame = anchor.querySelector<HTMLElement>("[data-shared-product-frame]") ?? anchor;
@@ -54,6 +105,7 @@ function createImmediateSharedOverlay(transfer: SharedProductTransfer) {
   const overlay = document.createElement("img");
   overlay.src = transfer.src;
   overlay.alt = "";
+  overlay.decoding = "async";
   overlay.dataset.sharedProductOverlay = "true";
   Object.assign(overlay.style, {
     position: "fixed",
@@ -100,7 +152,35 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   const firstRenderRef = useRef(true);
   const toastTimerRef = useRef<number | null>(null);
   const prefetchedRef = useRef<Set<string>>(new Set());
+  const restoreScrollRef = useRef(false);
+  const skipRouteMotionRef = useRef(false);
+  const lastLocationRef = useRef<string | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
+
+  useLayoutEffect(() => {
+    const search = window.location.search.startsWith("?")
+      ? window.location.search.slice(1)
+      : window.location.search;
+    const locationKey = `${pathname}${search ? `?${search}` : ""}`;
+    const previousLocation = lastLocationRef.current;
+    lastLocationRef.current = locationKey;
+    if (previousLocation === null) return;
+
+    if (restoreScrollRef.current) {
+      restoreScrollRef.current = false;
+      skipRouteMotionRef.current = true;
+      const position = readScrollPosition(`${SCROLL_POSITION_PREFIX}${locationKey}`);
+      if (!position) return;
+
+      window.scrollTo(position.x, position.y);
+      requestAnimationFrame(() => window.scrollTo(position.x, position.y));
+      window.setTimeout(() => window.scrollTo(position.x, position.y), 80);
+      return;
+    }
+
+    skipRouteMotionRef.current = false;
+    if (!window.location.hash) window.scrollTo(0, 0);
+  }, [pathname]);
 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
@@ -121,8 +201,11 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     const existingOverlay = document.querySelector<HTMLImageElement>("[data-shared-product-overlay]");
     const overlay = existingOverlay ?? document.createElement("img");
     let failSafeTimer: number | null = null;
+    let animationDone = false;
+    let imageReady = false;
 
     const finish = () => {
+      if (!animationDone || !imageReady) return;
       if (failSafeTimer) window.clearTimeout(failSafeTimer);
       sharedImage.style.removeProperty("opacity");
       overlay.remove();
@@ -131,6 +214,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     sharedImage.style.opacity = "0";
     overlay.src = transfer.src;
     overlay.alt = "";
+    overlay.decoding = "async";
     overlay.dataset.sharedProductOverlay = "true";
     Object.assign(overlay.style, {
       position: "fixed",
@@ -147,7 +231,16 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       willChange: compact ? "transform,border-radius" : "transform,width,height,border-radius",
     });
     if (!existingOverlay) document.body.appendChild(overlay);
-    failSafeTimer = window.setTimeout(finish, 1_000);
+    failSafeTimer = window.setTimeout(() => {
+      animationDone = true;
+      imageReady = true;
+      finish();
+    }, 1_400);
+
+    void waitForImageReady(sharedImage).then(() => {
+      imageReady = true;
+      finish();
+    });
 
     void loadFlip().then(({ gsap, Flip }) => {
       if (cancelled) return;
@@ -159,12 +252,20 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
         ease: compact ? "power3.out" : "power4.out",
         borderRadius: window.getComputedStyle(sharedTarget).borderRadius,
         overwrite: true,
-        onComplete: finish,
+        onComplete: () => {
+          animationDone = true;
+          finish();
+        },
       });
-    }).catch(finish);
+    }).catch(() => {
+      animationDone = true;
+      finish();
+    });
 
     return () => {
       cancelled = true;
+      animationDone = true;
+      imageReady = true;
       finish();
     };
   }, [pathname]);
@@ -187,8 +288,13 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     void loadGsap().then((gsap) => {
       if (cancelled) return;
       const compact = prefersCompactMotion();
+      const skipRouteMotion = skipRouteMotionRef.current;
+      if (skipRouteMotion) {
+        skipRouteMotionRef.current = false;
+        return;
+      }
 
-      if (!firstRender) {
+      if (!firstRender && !compact) {
         gsap.killTweensOf(page);
         gsap.fromTo(page, {
           autoAlpha: 0.92,
@@ -285,6 +391,27 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   }, [pathname]);
 
   useEffect(() => {
+    const previousScrollRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+
+    const onPopState = () => {
+      restoreScrollRef.current = true;
+    };
+    const saveBeforeLeaving = () => saveScrollPosition();
+
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("pagehide", saveBeforeLeaving);
+    window.addEventListener("beforeunload", saveBeforeLeaving);
+
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration;
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("pagehide", saveBeforeLeaving);
+      window.removeEventListener("beforeunload", saveBeforeLeaving);
+    };
+  }, []);
+
+  useEffect(() => {
     const flipWarmTimer = window.setTimeout(() => {
       if (document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
     }, prefersCompactMotion() ? 600 : 250);
@@ -313,6 +440,8 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       if (url.origin !== window.location.origin) return;
       const sameDocument = url.pathname === window.location.pathname && url.search === window.location.search;
       if (sameDocument) return;
+      saveScrollPosition();
+      restoreScrollRef.current = false;
       if (!canUseStoreMotion()) return;
 
       const sharedTransfer = anchor.dataset.sharedProduct ? rememberSharedProduct(anchor) : null;

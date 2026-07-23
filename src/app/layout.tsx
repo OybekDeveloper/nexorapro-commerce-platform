@@ -37,7 +37,7 @@ export default async function RootLayout({
     <html
       lang="uz"
       suppressHydrationWarning
-      data-scroll-behavior="smooth"
+      data-scroll-behavior="auto"
       className={`${GeistSans.variable} h-full antialiased`}
     >
       <body suppressHydrationWarning className="flex min-h-full flex-col">
