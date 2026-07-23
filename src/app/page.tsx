@@ -85,7 +85,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {products.filter((product) => product.featured).map((product) => <ProductCard key={product.id} product={product} />)}
+            {products.filter((product) => product.featured).map((product, index) => <ProductCard key={product.id} product={product} priority={index < 2} />)}
           </div>
         </section>
 
