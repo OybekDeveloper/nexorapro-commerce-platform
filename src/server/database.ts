@@ -18,6 +18,12 @@ database.pragma("journal_mode = WAL");
 database.pragma("foreign_keys = ON");
 database.pragma("busy_timeout = 5000");
 database.pragma("synchronous = NORMAL");
+// Read-path tuning sized for the 1 GB VPS: an 8 MB page cache and memory temp
+// store keep hot catalog/report queries off disk; mmap serves reads without
+// syscall/copy overhead (virtual memory, not resident).
+database.pragma("cache_size = -8192");
+database.pragma("temp_store = MEMORY");
+database.pragma("mmap_size = 134217728");
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS users (
@@ -469,6 +475,15 @@ const seedOrders = database.transaction(() => {
 });
 
 const migrateProductTranslations = database.transaction(() => {
+  // Fast path: every product already has its base UZ translation, so skip the
+  // full-table scan + languages_json rewrite this backfill would otherwise run
+  // on every process start.
+  const missing = database.prepare(`
+    SELECT COUNT(*) AS count FROM products
+    WHERE id NOT IN (SELECT product_id FROM product_translations WHERE locale = 'UZ')
+  `).get() as { count: number };
+  if (missing.count === 0) return;
+
   const products = database.prepare(`
     SELECT id, name, description, image_alt, badge, specs_json, video_title, video_eyebrow
     FROM products

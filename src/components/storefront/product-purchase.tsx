@@ -3,7 +3,7 @@
 import { Check, Minus, Plus, ShoppingBag, Truck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useCartActions, useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import { formatStoreMoney, type StoreProduct } from "@/lib/storefront-data";
 import { animateAddButton } from "@/lib/storefront-motion";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,8 @@ const copy = {
 } satisfies Record<StoreLocale, Record<string, string>>;
 
 export function ProductPurchase({ product }: { product: StoreProduct }) {
-  const { addToCart, locale } = useStore();
+  const { addToCart } = useCartActions();
+  const { locale } = useStoreData();
   const labels = copy[locale];
   const [quantity, setQuantity] = useState(1);
   const [color, setColor] = useState(product.colors[0]);

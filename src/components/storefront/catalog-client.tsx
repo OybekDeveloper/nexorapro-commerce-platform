@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useDeferredValue, useMemo, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 
 import { ProductCard } from "@/components/storefront/product-card";
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import { storeCategories, type StoreCategory } from "@/lib/storefront-data";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,32 @@ export const categoryCopy: Record<StoreLocale, Record<StoreCategory, { label: st
   EN: { Smartfon: { label: "Smartphones", description: "The latest Pro models" }, Noutbuk: { label: "Laptops", description: "Power for work and creativity" }, Planshet: { label: "Tablets", description: "Light and professional" }, Audio: { label: "Audio", description: "Clear, immersive sound" }, Aksessuar: { label: "Accessories", description: "Useful everyday additions" } },
 };
 
+function toValidCategory(value?: string): "all" | StoreCategory {
+  return storeCategories.some((item) => item.value === value)
+    ? (value as StoreCategory)
+    : "all";
+}
+
+/**
+ * Reads the URL search params on the client so /catalog can stay a static
+ * page. Rendered inside a Suspense boundary whose fallback is the unfiltered
+ * catalog, keeping the full grid in the prerendered HTML.
+ */
+export function CatalogFromParams() {
+  const searchParams = useSearchParams();
+  const initialCategory = searchParams.get("category") ?? undefined;
+  const initialQuery = searchParams.get("q") ?? undefined;
+  // Remount on URL filter changes so client-side navigations such as the
+  // header search pushing /catalog?q=... reset the view to the new filters.
+  return (
+    <CatalogClient
+      key={`${initialCategory ?? ""}|${initialQuery ?? ""}`}
+      initialCategory={initialCategory}
+      initialQuery={initialQuery}
+    />
+  );
+}
+
 export function CatalogClient({
   initialCategory,
   initialQuery,
@@ -36,27 +63,26 @@ export function CatalogClient({
   initialCategory?: string;
   initialQuery?: string;
 }) {
-  const { products, locale } = useStore();
+  const { products, locale } = useStoreData();
   const labels = copy[locale];
-  const validCategory = storeCategories.some(
-    (item) => item.value === initialCategory,
-  )
-    ? (initialCategory as StoreCategory)
-    : "all";
   const [query, setQuery] = useState(initialQuery ?? "");
   const [category, setCategory] = useState<"all" | StoreCategory>(
-    validCategory,
+    toValidCategory(initialCategory),
   );
   const [sort, setSort] = useState<SortValue>("featured");
   const [inStockOnly, setInStockOnly] = useState(false);
   const [mobileFilters, setMobileFilters] = useState(false);
+
+  // Typing in the search box stays responsive: the input updates immediately
+  // while the grid re-filters at deferred priority.
+  const deferredQuery = useDeferredValue(query);
 
   const filteredProducts = useMemo(() => {
     const items = products.filter((product) => {
       const matchesQuery =
         `${product.name} ${product.category} ${product.description} ${product.specs.join(" ")}`
           .toLowerCase()
-          .includes(query.trim().toLowerCase());
+          .includes(deferredQuery.trim().toLowerCase());
       const matchesCategory =
         category === "all" || product.category === category;
       const matchesStock = !inStockOnly || product.stock > 0;
@@ -68,7 +94,7 @@ export function CatalogClient({
       if (sort === "rating") return b.rating - a.rating;
       return Number(b.featured) - Number(a.featured);
     });
-  }, [category, inStockOnly, products, query, sort]);
+  }, [category, inStockOnly, products, deferredQuery, sort]);
 
   const clearFilters = () => {
     setQuery("");

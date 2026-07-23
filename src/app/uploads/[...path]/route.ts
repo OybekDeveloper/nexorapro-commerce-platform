@@ -1,7 +1,7 @@
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-
-export const dynamic = "force-dynamic";
+import { Readable } from "node:stream";
 
 type Context = { params: Promise<{ path: string[] }> };
 
@@ -14,7 +14,7 @@ const mimeTypes: Record<string, string> = {
   avif: "image/avif",
 };
 
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
   const segments = (await context.params).path;
   if (
     segments.length !== 4
@@ -31,13 +31,33 @@ export async function GET(_request: Request, context: Context) {
 
   try {
     const filePath = path.join(/*turbopackIgnore: true*/ uploadRoot, ...segments);
-    const file = await fs.readFile(/*turbopackIgnore: true*/ filePath);
-    return new Response(new Uint8Array(file), {
-      headers: {
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Content-Type": mimeTypes[extension],
-        "X-Content-Type-Options": "nosniff",
-      },
+    const stats = await fs.stat(/*turbopackIgnore: true*/ filePath);
+    if (!stats.isFile()) return new Response("Not found", { status: 404 });
+
+    const etag = `"${stats.size.toString(16)}-${Math.trunc(stats.mtimeMs).toString(16)}"`;
+    const baseHeaders = {
+      "Cache-Control": "public, max-age=31536000, immutable",
+      "Content-Type": mimeTypes[extension],
+      "X-Content-Type-Options": "nosniff",
+      ETag: etag,
+      "Last-Modified": stats.mtime.toUTCString(),
+    };
+
+    // Uploaded files are immutable per URL; a matching validator means the
+    // client copy is current and no body needs to leave the 1 GB VPS.
+    const ifNoneMatch = request.headers.get("if-none-match");
+    const ifModifiedSince = request.headers.get("if-modified-since");
+    if (
+      (ifNoneMatch && ifNoneMatch.split(",").some((value) => value.trim() === etag))
+      || (!ifNoneMatch && ifModifiedSince && stats.mtime.getTime() <= Date.parse(ifModifiedSince))
+    ) {
+      return new Response(null, { status: 304, headers: baseHeaders });
+    }
+
+    // Stream from disk instead of buffering the whole file in memory.
+    const stream = Readable.toWeb(createReadStream(/*turbopackIgnore: true*/ filePath)) as ReadableStream;
+    return new Response(stream, {
+      headers: { ...baseHeaders, "Content-Length": String(stats.size) },
     });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return new Response("Not found", { status: 404 });

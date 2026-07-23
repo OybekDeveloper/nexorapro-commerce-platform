@@ -74,12 +74,15 @@ export function createSession(userId: string, metadata: { userAgent?: string | n
   return { token, expiresAt };
 }
 
+// Runs on every authenticated request; prepare once instead of per call.
+const selectUserBySession = database.prepare(`
+  SELECT u.id, u.name, u.email, u.role
+  FROM sessions s JOIN users u ON u.id = s.user_id
+  WHERE s.token_hash = ? AND s.expires_at > ?
+`);
+
 export function getUserBySession(token: string): AuthUser | null {
-  const row = database.prepare(`
-    SELECT u.id, u.name, u.email, u.role
-    FROM sessions s JOIN users u ON u.id = s.user_id
-    WHERE s.token_hash = ? AND s.expires_at > ?
-  `).get(hashToken(token), new Date().toISOString()) as AuthUser | undefined;
+  const row = selectUserBySession.get(hashToken(token), new Date().toISOString()) as AuthUser | undefined;
   return row ?? null;
 }
 

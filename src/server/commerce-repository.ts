@@ -372,6 +372,15 @@ export function listProducts(options: { storefrontOnly?: boolean; includeDeleted
   ));
 }
 
+/** Dashboard low-stock card: avoids hydrating the whole catalog for four columns. */
+export function listLowStockProducts(threshold = 5) {
+  return database.prepare(`
+    SELECT id, name, sku, stock FROM products
+    WHERE deleted_at IS NULL AND stock <= ?
+    ORDER BY updated_at DESC, name ASC
+  `).all(threshold) as Array<{ id: string; name: string; sku: string; stock: number }>;
+}
+
 export function getProduct(idOrSlug: string, options: { includeDeleted?: boolean } = {}) {
   const row = database.prepare(`
     SELECT * FROM products
@@ -801,7 +810,7 @@ export function importProductBatch(
 
 export function listOrders(options: { limit?: number } = {}) {
   const limit = options.limit ? ` LIMIT ${Math.max(1, Math.min(500, Math.trunc(options.limit)))}` : "";
-  const rows = database.prepare(`SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders ORDER BY datetime(created_at) DESC, sequence DESC${limit}`).all() as OrderRow[];
+  const rows = database.prepare(`SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders ORDER BY created_at DESC, sequence DESC${limit}`).all() as OrderRow[];
   return mapOrders(rows);
 }
 
@@ -815,15 +824,15 @@ export function listOrdersPage(input: OrderListQuery) {
     conditions.push("(id LIKE ? ESCAPE '\\' COLLATE NOCASE OR customer LIKE ? ESCAPE '\\' COLLATE NOCASE OR phone LIKE ? ESCAPE '\\' COLLATE NOCASE)");
     values.push(`%${escaped}%`, `%${escaped}%`, `%${escaped}%`);
   }
-  if (input.from) { conditions.push("datetime(created_at) >= datetime(?)"); values.push(input.from); }
-  if (input.to) { conditions.push("datetime(created_at) < datetime(?, '+1 day')"); values.push(input.to); }
+  if (input.from) { conditions.push("created_at >= datetime(?)"); values.push(input.from); }
+  if (input.to) { conditions.push("created_at < datetime(?, '+1 day')"); values.push(input.to); }
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const total = (database.prepare(`SELECT COUNT(*) AS count FROM orders ${where}`).get(...values) as { count: number }).count;
   const rows = database.prepare(`
     SELECT id, customer, phone, address, address_lat, address_lng, channel, payment,
       status, subtotal, discount, total, user_id, created_at
     FROM orders ${where}
-    ORDER BY datetime(created_at) DESC, sequence DESC LIMIT ? OFFSET ?
+    ORDER BY created_at DESC, sequence DESC LIMIT ? OFFSET ?
   `).all(...values, input.pageSize, (input.page - 1) * input.pageSize) as OrderRow[];
   const totalPages = Math.max(1, Math.ceil(total / input.pageSize));
   const pagination: PaginationMeta = {
@@ -838,7 +847,7 @@ export function listOrdersPage(input: OrderListQuery) {
 }
 
 export function listOrdersByUser(userId: string) {
-  const rows = database.prepare("SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE user_id = ? ORDER BY datetime(created_at) DESC, sequence DESC").all(userId) as OrderRow[];
+  const rows = database.prepare("SELECT id, customer, phone, address, address_lat, address_lng, channel, payment, status, subtotal, discount, total, user_id, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC, sequence DESC").all(userId) as OrderRow[];
   return mapOrders(rows);
 }
 
@@ -1186,7 +1195,7 @@ function defaultReportRange(from?: string, to?: string) {
 
 export function getSalesReport(options: { from?: string; to?: string; limit?: number } = {}): SalesReport {
   const range = defaultReportRange(options.from, options.to);
-  const rangeClause = "datetime(created_at) >= datetime(?) AND datetime(created_at) < datetime(?, '+1 day')";
+  const rangeClause = "created_at >= datetime(?) AND created_at < datetime(?, '+1 day')";
   const orderSummary = database.prepare(`
     SELECT
       COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) AS revenue,
@@ -1199,7 +1208,7 @@ export function getSalesReport(options: { from?: string; to?: string; limit?: nu
     SELECT COALESCE(SUM(oi.quantity), 0) AS unitsSold,
       COALESCE(SUM((oi.price - oi.cost_price) * oi.quantity), 0) AS grossProfit
     FROM order_items oi JOIN orders o ON o.id = oi.order_id
-    WHERE o.status != 'cancelled' AND datetime(o.created_at) >= datetime(?) AND datetime(o.created_at) < datetime(?, '+1 day')
+    WHERE o.status != 'cancelled' AND o.created_at >= datetime(?) AND o.created_at < datetime(?, '+1 day')
   `).get(range.from, range.to) as { unitsSold: number; grossProfit: number };
   const dailyOrders = database.prepare(`
     SELECT date(created_at) AS date, COALESCE(SUM(total), 0) AS revenue, COUNT(*) AS orderCount
@@ -1210,7 +1219,7 @@ export function getSalesReport(options: { from?: string; to?: string; limit?: nu
     SELECT date(o.created_at) AS date, COALESCE(SUM(oi.quantity), 0) AS unitsSold,
       COALESCE(SUM((oi.price - oi.cost_price) * oi.quantity), 0) AS grossProfit
     FROM order_items oi JOIN orders o ON o.id = oi.order_id
-    WHERE o.status != 'cancelled' AND datetime(o.created_at) >= datetime(?) AND datetime(o.created_at) < datetime(?, '+1 day')
+    WHERE o.status != 'cancelled' AND o.created_at >= datetime(?) AND o.created_at < datetime(?, '+1 day')
     GROUP BY date(o.created_at) ORDER BY date(o.created_at)
   `).all(range.from, range.to) as Array<{ date: string; unitsSold: number; grossProfit: number }>;
   const itemByDate = new Map(dailyItems.map((item) => [item.date, item]));
@@ -1221,13 +1230,13 @@ export function getSalesReport(options: { from?: string; to?: string; limit?: nu
       SUM(oi.quantity) AS quantity, SUM(oi.price * oi.quantity) AS revenue,
       SUM((oi.price - oi.cost_price) * oi.quantity) AS grossProfit
     FROM order_items oi JOIN orders o ON o.id = oi.order_id
-    WHERE o.status != 'cancelled' AND datetime(o.created_at) >= datetime(?) AND datetime(o.created_at) < datetime(?, '+1 day')
+    WHERE o.status != 'cancelled' AND o.created_at >= datetime(?) AND o.created_at < datetime(?, '+1 day')
     GROUP BY oi.product_id ORDER BY revenue DESC LIMIT ?
   `).all(range.from, range.to, limit) as SalesReport["topProducts"];
   const categories = database.prepare(`
     SELECT p.category AS name, SUM(oi.quantity) AS quantity, SUM(oi.price * oi.quantity) AS revenue
     FROM order_items oi JOIN orders o ON o.id = oi.order_id JOIN products p ON p.id = oi.product_id
-    WHERE o.status != 'cancelled' AND datetime(o.created_at) >= datetime(?) AND datetime(o.created_at) < datetime(?, '+1 day')
+    WHERE o.status != 'cancelled' AND o.created_at >= datetime(?) AND o.created_at < datetime(?, '+1 day')
     GROUP BY p.category ORDER BY revenue DESC
   `).all(range.from, range.to) as SalesReport["categories"];
   const breakdown = (column: "channel" | "payment" | "status") => database.prepare(`

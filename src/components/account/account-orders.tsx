@@ -180,7 +180,10 @@ export function AccountOrders({
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => void refresh(true), 30_000);
+    // Hidden tabs skip the poll; the focus listener catches up on return.
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh(true);
+    }, 30_000);
     const onFocus = () => void refresh(true);
     window.addEventListener("focus", onFocus);
     return () => {

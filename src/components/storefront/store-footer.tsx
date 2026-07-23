@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { NexoraMark } from "@/components/icons/nexora-icons";
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 
 const copy = {
   UZ: { intro: "Premium texnologiyalar, shaffof tanlov va boshqariladigan savdo tajribasi.", shop: "Xarid", catalog: "Katalog", cart: "Savat", categories: "Kategoriyalar", phones: "Smartfonlar", laptops: "Noutbuklar", tablets: "Planshetlar", platform: "Platforma", admin: "Admin ko‘rinishi", note: "Mahsulot tasvirlari © Apple Inc. · Narx va qoldiq namuna sifatida" },
@@ -12,7 +12,7 @@ const copy = {
 } satisfies Record<StoreLocale, Record<string, string>>;
 
 export function StoreFooter() {
-  const { locale } = useStore();
+  const { locale } = useStoreData();
   const labels = copy[locale];
   return (
     <footer className="border-t border-black/5 bg-[#f5f5f7] px-4 py-12 text-sm text-zinc-600 sm:px-6 lg:px-8">

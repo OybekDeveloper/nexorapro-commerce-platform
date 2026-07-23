@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { type StoreProduct, type StoreProductVariant } from "@/lib/storefront-data";
 import type { AuthUser } from "@/lib/auth";
@@ -11,26 +11,42 @@ export type StoreLocale = "UZ" | "RU" | "EN";
 type CartItem = { productId: string; variantId?: string; quantity: number };
 type CartLine = { product: StoreProduct; variant?: StoreProductVariant; quantity: number; unitPrice: number; availableStock: number };
 
-type StoreContextValue = {
+type StoreDataValue = {
   user: AuthUser | null;
   locale: StoreLocale;
   setLocale: (locale: StoreLocale) => void;
   products: StoreProduct[];
+};
+
+type CartStateValue = {
   cartItems: CartItem[];
   cartLines: CartLine[];
   cartCount: number;
   subtotal: number;
+};
+
+type CartActionsValue = {
   addToCart: (productId: string, quantity?: number, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   removeFromCart: (productId: string, variantId?: string) => void;
   clearCart: () => void;
 };
 
-const StoreContext = createContext<StoreContextValue | null>(null);
+type StoreContextValue = StoreDataValue & CartStateValue & CartActionsValue;
+
+const StoreDataContext = createContext<StoreDataValue | null>(null);
+const CartStateContext = createContext<CartStateValue | null>(null);
+const CartActionsContext = createContext<CartActionsValue | null>(null);
 const CART_KEY = "nexorapro-cart-v1";
 const LOCALE_KEY = "nexorapro-locale-v1";
 export const AUTH_SESSION_CHANGED_EVENT = "nexorapro:auth-session-changed";
 const cartKey = (productId: string, variantId?: string) => `${productId}:${variantId ?? ""}`;
+
+function sameUser(a: AuthUser | null, b: AuthUser | null) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.id === b.id && a.name === b.name && a.email === b.email && a.role === b.role;
+}
 
 function parseSavedCart(value: string): CartItem[] {
   const parsed = JSON.parse(value) as unknown;
@@ -54,7 +70,7 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
       .then((response) => response.ok ? response.json() as Promise<{ user: AuthUser | null }> : null)
       .then((payload) => {
         if (!payload) return;
-        startTransition(() => setUser(payload.user));
+        startTransition(() => setUser((current) => sameUser(current, payload.user) ? current : payload.user));
       })
       .catch(() => undefined);
   }, []);
@@ -82,7 +98,7 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
         .then((response) => response.ok ? response.json() as Promise<{ user: AuthUser | null }> : null)
         .then((payload) => {
           if (!active || !payload) return;
-          startTransition(() => setUser(payload.user));
+          startTransition(() => setUser((current) => sameUser(current, payload.user) ? current : payload.user));
         })
         .catch(() => undefined);
     }, 1200);
@@ -107,10 +123,10 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
     if (hydrated) window.localStorage.setItem(CART_KEY, JSON.stringify(cartItems));
   }, [cartItems, hydrated]);
 
-  const setLocale = (nextLocale: StoreLocale) => {
+  const setLocale = useCallback((nextLocale: StoreLocale) => {
     setLocaleState(nextLocale);
     window.localStorage.setItem(LOCALE_KEY, nextLocale);
-  };
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = locale.toLowerCase();
@@ -121,8 +137,17 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
     [initialProducts, locale],
   );
 
+  // Cart actions read the current catalog through a ref so their identities stay
+  // stable across locale/product updates; consumers of CartActionsContext never
+  // re-render because of catalog or cart changes. Actions run from event
+  // handlers, which always fire after this effect has synced the ref.
+  const productsRef = useRef(products);
+  useEffect(() => {
+    productsRef.current = products;
+  }, [products]);
+
   const addToCart = useCallback((productId: string, quantity = 1, variantId?: string) => {
-    const product = products.find((item) => item.id === productId);
+    const product = productsRef.current.find((item) => item.id === productId);
     if (!product) return;
     const activeVariants = product.variants?.filter((variant) => variant.status === "active") ?? [];
     const variant = variantId ? activeVariants.find((item) => item.id === variantId) : undefined;
@@ -141,10 +166,10 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
     window.dispatchEvent(new CustomEvent<CartAddedDetail>(CART_ADDED_EVENT, {
       detail: { productId, quantity: safeQuantity },
     }));
-  }, [products]);
+  }, []);
 
   const updateQuantity = useCallback((productId: string, quantity: number, variantId?: string) => {
-    const product = products.find((item) => item.id === productId);
+    const product = productsRef.current.find((item) => item.id === productId);
     if (!product) return;
     const variant = variantId ? product.variants?.find((item) => item.id === variantId && item.status === "active") : undefined;
     const activeVariants = product.variants?.filter((item) => item.status === "active") ?? [];
@@ -158,7 +183,13 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
     setCartItems((current) => current.map((item) => cartKey(item.productId, item.variantId) === key
       ? { ...item, quantity: Math.min(availableStock, quantity) }
       : item));
-  }, [products]);
+  }, []);
+
+  const removeFromCart = useCallback((productId: string, variantId?: string) => {
+    setCartItems((current) => current.filter((item) => cartKey(item.productId, item.variantId) !== cartKey(productId, variantId)));
+  }, []);
+
+  const clearCart = useCallback(() => setCartItems([]), []);
 
   const cartLines = useMemo(() => cartItems.flatMap((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
@@ -171,26 +202,51 @@ export function StoreProvider({ children, initialProducts = [], initialUser = nu
     return [{ product, variant, quantity: Math.min(item.quantity, availableStock), unitPrice: variant?.price ?? product.price, availableStock }];
   }), [cartItems, products]);
 
-  const value = useMemo<StoreContextValue>(() => ({
-    user,
-    locale,
-    setLocale,
-    products,
+  const dataValue = useMemo<StoreDataValue>(() => ({ user, locale, setLocale, products }), [user, locale, setLocale, products]);
+
+  const cartStateValue = useMemo<CartStateValue>(() => ({
     cartItems,
     cartLines,
     cartCount: cartLines.reduce((sum, item) => sum + item.quantity, 0),
     subtotal: cartLines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0),
-    addToCart,
-    updateQuantity,
-    removeFromCart: (productId, variantId) => setCartItems((current) => current.filter((item) => cartKey(item.productId, item.variantId) !== cartKey(productId, variantId))),
-    clearCart: () => setCartItems([]),
-  }), [addToCart, cartItems, cartLines, locale, products, updateQuantity, user]);
+  }), [cartItems, cartLines]);
 
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
+  const cartActionsValue = useMemo<CartActionsValue>(() => ({ addToCart, updateQuantity, removeFromCart, clearCart }), [addToCart, updateQuantity, removeFromCart, clearCart]);
+
+  return (
+    <StoreDataContext.Provider value={dataValue}>
+      <CartStateContext.Provider value={cartStateValue}>
+        <CartActionsContext.Provider value={cartActionsValue}>{children}</CartActionsContext.Provider>
+      </CartStateContext.Provider>
+    </StoreDataContext.Provider>
+  );
 }
 
-export function useStore() {
-  const value = useContext(StoreContext);
-  if (!value) throw new Error("useStore must be used inside StoreProvider");
+/** Catalog, locale, and session data. Does not change on cart mutations. */
+export function useStoreData() {
+  const value = useContext(StoreDataContext);
+  if (!value) throw new Error("useStoreData must be used inside StoreProvider");
   return value;
+}
+
+/** Cart contents. Subscribes the component to every cart mutation. */
+export function useCartState() {
+  const value = useContext(CartStateContext);
+  if (!value) throw new Error("useCartState must be used inside StoreProvider");
+  return value;
+}
+
+/** Stable cart mutators. Never re-renders the component on cart changes. */
+export function useCartActions() {
+  const value = useContext(CartActionsContext);
+  if (!value) throw new Error("useCartActions must be used inside StoreProvider");
+  return value;
+}
+
+/** Combined view for screens that need everything (e.g. the cart page). */
+export function useStore(): StoreContextValue {
+  const data = useStoreData();
+  const cartState = useCartState();
+  const cartActions = useCartActions();
+  return useMemo(() => ({ ...data, ...cartState, ...cartActions }), [data, cartState, cartActions]);
 }

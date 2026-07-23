@@ -14,7 +14,7 @@ import { ProductCard } from "@/components/storefront/product-card";
 import { ProductVideoShowcase } from "@/components/storefront/product-video-showcase";
 import { StoreFooter } from "@/components/storefront/store-footer";
 import { StoreHeader } from "@/components/storefront/store-header";
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import { storeCategories } from "@/lib/storefront-data";
 
 const copy = {
@@ -24,7 +24,7 @@ const copy = {
 } satisfies Record<StoreLocale, { pill: string; title: string; intro: string; shop: string; admin: string; service: string; original: string; installment: string; new: string; popular: string; all: string; collection: string; benefits: string[][] }>;
 
 export default function Home() {
-  const { products, locale } = useStore();
+  const { products, locale } = useStoreData();
   const labels = copy[locale];
   const videoProduct = products.find((product) => product.video);
 

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowDownRight, ArrowRight, ArrowUpRight } from "lucide-react";
 
-import { CategoryChart, RevenueChart } from "@/components/admin/sales-chart";
+import { CategoryChart, RevenueChart } from "@/components/admin/lazy-charts";
 import { NexoraIcon, type NexoraIconName } from "@/components/icons/nexora-icons";
-import { listProducts } from "@/server/commerce-repository";
+import { listLowStockProducts } from "@/server/commerce-repository";
 import { getCachedAnalytics, getCachedSalesReport } from "@/server/cached-commerce";
 import { requirePageUser } from "@/server/auth";
 
@@ -12,9 +12,8 @@ const statusLabels = { new: "Yangi", paid: "To‘landi", packing: "Tayyorlanmoqd
 
 export default async function AdminDashboardPage() {
   const user = await requirePageUser("admin", "/admin-login");
-  const products = listProducts();
   const [analytics, salesReport] = await Promise.all([getCachedAnalytics(), getCachedSalesReport()]);
-  const lowStock = products.filter((product) => product.stock <= 5);
+  const lowStock = listLowStockProducts();
   const averageOrder = analytics.orderCount ? analytics.revenue / analytics.orderCount : 0;
   const stats: Array<{ label: string; value: string; suffix: string; trend: string; positive: boolean; icon: NexoraIconName }> = [
     { label: "Umumiy tushum", value: `${(analytics.revenue / 1_000_000).toFixed(1)} mln`, suffix: "UZS", trend: "Live", positive: true, icon: "revenue" },

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Check, ChevronRight } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { useStore } from "@/components/storefront/store-provider";
+import { useStoreData } from "@/components/storefront/store-provider";
 import {
   canUseStoreMotion,
   CART_ADDED_EVENT,
@@ -144,7 +144,7 @@ function readSharedProduct(pathname: string) {
 }
 
 export function StorefrontMotionShell({ children }: { children: React.ReactNode }) {
-  const { products } = useStore();
+  const { products } = useStoreData();
   const pathname = usePathname();
   const router = useRouter();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -233,7 +233,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       boxSizing: "border-box",
       zIndex: "90",
       contain: "layout paint",
-      willChange: compact ? "transform,border-radius" : "transform,width,height,border-radius",
+      willChange: "transform,border-radius",
     });
     if (!existingOverlay) document.body.appendChild(overlay);
     failSafeTimer = window.setTimeout(() => {
@@ -250,8 +250,11 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     void loadFlip().then(({ gsap, Flip }) => {
       if (cancelled) return;
       gsap.killTweensOf(overlay);
+      // Card frame and product-detail target share the same 1.55/1 aspect ratio,
+      // so a pure transform (scale) FLIP is distortion-free and stays off the
+      // layout/paint path — width/height animation caused per-frame reflow.
       Flip.fit(overlay, sharedTarget, {
-        scale: compact,
+        scale: true,
         simple: true,
         duration: compact ? 0.32 : 0.5,
         ease: compact ? "power3.out" : "power4.out",
@@ -418,6 +421,10 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   }, []);
 
   useEffect(() => {
+    // Admin has its own navigation; keep the capture-phase pointer/click work
+    // (closest + URL parsing on every hover) off admin routes entirely.
+    if (pathname.startsWith("/admin")) return;
+
     const flipWarmTimer = window.setTimeout(() => {
       if (!prefersCompactMotion() && document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
     }, prefersCompactMotion() ? 600 : 250);

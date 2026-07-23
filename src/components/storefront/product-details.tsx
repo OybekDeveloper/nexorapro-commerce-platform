@@ -6,7 +6,7 @@ import { ChevronRight, ShieldCheck, Star } from "lucide-react";
 
 import { ProductPurchase } from "@/components/storefront/product-purchase";
 import { ProductVideoShowcase } from "@/components/storefront/product-video-showcase";
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import type { StoreProduct } from "@/lib/storefront-data";
 
 const copy = {
@@ -16,7 +16,7 @@ const copy = {
 } satisfies Record<StoreLocale, { catalog: string; reviews: string; verified: string; verifiedText: string; specs: string[]; feature: string }>;
 
 export function ProductDetails({ initialProduct }: { initialProduct: StoreProduct }) {
-  const { locale, products } = useStore();
+  const { locale, products } = useStoreData();
   const product = products.find((item) => item.id === initialProduct.id) ?? initialProduct;
   const labels = copy[locale];
 

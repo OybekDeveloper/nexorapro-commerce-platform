@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Check, ShoppingBag, Star } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useCartActions, useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import { formatStoreMoney, type StoreProduct } from "@/lib/storefront-data";
 import { animateAddButton } from "@/lib/storefront-motion";
 import { cn } from "@/lib/utils";
@@ -17,8 +17,11 @@ const copy = {
 } satisfies Record<StoreLocale, Record<string, string>>;
 
 export function ProductCard({ product, priority = false }: { product: StoreProduct; priority?: boolean }) {
-  const { addToCart, locale, products } = useStore();
-  const localizedProduct = products.find((item) => item.id === product.id) ?? product;
+  const { addToCart } = useCartActions();
+  const { locale } = useStoreData();
+  // Parents render cards from the already-localized catalog in StoreDataContext,
+  // so the product prop needs no per-render lookup.
+  const localizedProduct = product;
   const labels = copy[locale];
   const hasVariants = (localizedProduct.variants?.filter((variant) => variant.status === "active").length ?? 0) > 0;
   const [added, setAdded] = useState(false);

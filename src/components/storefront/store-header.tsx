@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Globe2, Menu, Search, ShoppingBag, UserRound, X } from "lucide-react";
 
 import { NexoraMark } from "@/components/icons/nexora-icons";
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useCartState, useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import { canUseStoreMotion, CART_ADDED_EVENT, loadGsap, prefersCompactMotion } from "@/lib/storefront-motion";
 import { cn } from "@/lib/utils";
 
@@ -19,7 +19,8 @@ const copy = {
 export function StoreHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const { locale, setLocale, cartCount, products, user } = useStore();
+  const { locale, setLocale, products, user } = useStoreData();
+  const { cartCount } = useCartState();
   const [searchOpen, setSearchOpen] = useState(false);
   const [localeOpen, setLocaleOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

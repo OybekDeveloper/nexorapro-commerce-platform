@@ -3,7 +3,7 @@
 import { ExternalLink, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
+import { useStoreData, type StoreLocale } from "@/components/storefront/store-provider";
 import type { StoreProductVideo } from "@/lib/storefront-data";
 import { canUseStoreMotion, loadGsap, prefersCompactMotion, prefersLowDataMotion } from "@/lib/storefront-motion";
 
@@ -14,7 +14,7 @@ const copy = {
 } satisfies Record<StoreLocale, Record<string, string>>;
 
 export function ProductVideoShowcase({ media, productName }: { media: StoreProductVideo; productName: string }) {
-  const { locale } = useStore();
+  const { locale } = useStoreData();
   const labels = copy[locale];
   const sectionRef = useRef<HTMLElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
