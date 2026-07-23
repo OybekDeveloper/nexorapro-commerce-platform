@@ -65,9 +65,8 @@ export function NexoraIcon({ name, className, ...props }: NexoraIconProps) {
 
 export function NexoraMark({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" className={className} {...props}>
-      <path d="M6 23.5V8.5L16 4l10 4.5v15L16 28 6 23.5Z" fill="currentColor" opacity=".14" />
-      <path d="M8.5 22V10l7.5 9 7.5-9v12" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 64 64" fill="none" aria-hidden="true" className={className} {...props}>
+      <image href="/logo.png" width="64" height="64" preserveAspectRatio="xMidYMid meet" />
     </svg>
   );
 }
