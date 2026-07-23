@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "npm run build && node --test tests/api.integration.test.mjs",
     "test:integration": "node --test tests/api.integration.test.mjs",
-    "benchmark:db": "node scripts/benchmark-database.mjs"
+    "benchmark:db": "node scripts/benchmark-database.mjs",
+    "generate:icons": "node scripts/generate-brand-icons.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

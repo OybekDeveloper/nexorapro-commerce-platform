@@ -14,10 +14,15 @@ export const metadata: Metadata = {
   },
   applicationName: "nexorapro.uz",
   description: "nexorapro.uz premium electronics storefront and commerce management platform.",
+  manifest: "/site.webmanifest",
   icons: {
-    icon: "/nexorapro-dev-icon.svg",
-    shortcut: "/nexorapro-dev-icon.svg",
-    apple: "/nexorapro-dev-icon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-16x16.png", type: "image/png", sizes: "16x16" },
+      { url: "/favicon-32x32.png", type: "image/png", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-icon.png", type: "image/png", sizes: "180x180" }],
   },
   openGraph: {
     title: "nexorapro.uz — Premium technology store",

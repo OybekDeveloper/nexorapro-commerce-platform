@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/logo.png" width="88" height="88" alt="NexoraPro logo" />
+
 # nexorapro.uz Commerce
 
 **A full-stack electronics storefront and commerce operations platform.**
@@ -33,6 +35,38 @@ client-side state.
 > **Portfolio project 01/10.** The current release targets a single Ubuntu VPS
 > and uses SQLite intentionally. The architecture documents the migration path
 > to PostgreSQL and object storage for multi-instance production workloads.
+
+## Project presentation
+
+The complete Project 01/10 story—from customer experience and commerce
+operations to architecture and production delivery.
+
+<p align="center">
+  <a href="docs/assets/presentation/01-cover.png">
+    <img src="docs/assets/presentation/01-cover.png" width="820" alt="NexoraPro Commerce Project 01/10 presentation cover" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/assets/presentation/02-one-system.png"><img src="docs/assets/presentation/02-one-system.png" width="405" alt="One NexoraPro platform connecting storefront and admin operations" /></a>
+  <a href="docs/assets/presentation/03-storefront.png"><img src="docs/assets/presentation/03-storefront.png" width="405" alt="Responsive NexoraPro customer storefront and product experience" /></a>
+</p>
+
+<p align="center">
+  <a href="docs/assets/presentation/04-operations.png"><img src="docs/assets/presentation/04-operations.png" width="405" alt="NexoraPro admin dashboard and point-of-sale workspace" /></a>
+  <a href="docs/assets/presentation/05-engineering.png"><img src="docs/assets/presentation/05-engineering.png" width="405" alt="NexoraPro engineering architecture and consistency boundaries" /></a>
+</p>
+
+<p align="center">
+  <a href="docs/assets/presentation/06-deployment.png"><img src="docs/assets/presentation/06-deployment.png" width="405" alt="NexoraPro production CI and deployment pipeline" /></a>
+  <a href="docs/assets/presentation/07-links.png"><img src="docs/assets/presentation/07-links.png" width="405" alt="NexoraPro live website and source code links" /></a>
+</p>
+
+<div align="center">
+
+[Open the seven-page presentation (PDF)](docs/assets/presentation/nexorapro-project-presentation.pdf)
+
+</div>
 
 ## Product highlights
 
