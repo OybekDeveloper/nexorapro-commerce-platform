@@ -25,9 +25,9 @@ export function ProductDetails({ initialProduct }: { initialProduct: StoreProduc
       <main id="main-content" className="px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <nav data-motion-reveal className="flex items-center gap-1 text-sm text-zinc-500" aria-label="Breadcrumb">
-            <Link href="/catalog" className="cursor-pointer hover:text-brand">{labels.catalog}</Link>
+            <Link prefetch={false} href="/catalog" className="cursor-pointer hover:text-brand">{labels.catalog}</Link>
             <ChevronRight className="size-4" />
-            <Link href={`/catalog?category=${product.category}`} className="cursor-pointer hover:text-brand">{product.category}</Link>
+            <Link prefetch={false} href={`/catalog?category=${product.category}`} className="cursor-pointer hover:text-brand">{product.category}</Link>
             <ChevronRight className="size-4" />
             <span className="truncate text-zinc-700">{product.name}</span>
           </nav>

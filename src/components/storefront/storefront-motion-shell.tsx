@@ -185,6 +185,11 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper || pathname.startsWith("/admin") || !canUseStoreMotion()) return;
+    if (prefersCompactMotion()) {
+      document.querySelector<HTMLImageElement>("[data-shared-product-overlay]")?.remove();
+      window.sessionStorage.removeItem(SHARED_PRODUCT_KEY);
+      return;
+    }
 
     const transfer = readSharedProduct(pathname);
     const sharedTarget = transfer
@@ -274,6 +279,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
     const wrapper = wrapperRef.current;
     const page = wrapper?.querySelector<HTMLElement>("main#main-content");
     if (!wrapper || !page || pathname.startsWith("/admin") || !canUseStoreMotion()) return;
+    if (prefersCompactMotion()) return;
 
     let cancelled = false;
     let observer: IntersectionObserver | null = null;
@@ -308,7 +314,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
         });
       }
 
-      const shouldAnimateHero = !firstRender || compact;
+      const shouldAnimateHero = !firstRender;
       if (shouldAnimateHero) {
         const hero = page.querySelector<HTMLElement>("[data-motion-hero]");
         const heroItems = hero ? Array.from(hero.querySelectorAll<HTMLElement>("[data-motion-hero-item]")) : [];
@@ -413,7 +419,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const flipWarmTimer = window.setTimeout(() => {
-      if (document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
+      if (!prefersCompactMotion() && document.querySelector("[data-shared-product]")) void loadFlip().catch(() => undefined);
     }, prefersCompactMotion() ? 600 : 250);
 
     const warmDestination = (event: PointerEvent) => {
@@ -443,6 +449,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
       saveScrollPosition();
       restoreScrollRef.current = false;
       if (!canUseStoreMotion()) return;
+      if (prefersCompactMotion()) return;
 
       const sharedTransfer = anchor.dataset.sharedProduct ? rememberSharedProduct(anchor) : null;
       if (sharedTransfer) createImmediateSharedOverlay(sharedTransfer);
@@ -506,7 +513,7 @@ export function StorefrontMotionShell({ children }: { children: React.ReactNode 
               <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand"><Check className="size-3.5" />Savatga qo‘shildi</p>
               <p className="mt-1 truncate text-sm font-semibold text-[#1d1d1f]">{toastProduct.name}</p>
             </div>
-            <Link href="/cart" className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-brand text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2" aria-label="Savatni ochish">
+            <Link prefetch={false} href="/cart" className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-brand text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2" aria-label="Savatni ochish">
               <ChevronRight className="size-4" />
             </Link>
           </div>
