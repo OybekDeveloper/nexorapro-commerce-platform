@@ -47,10 +47,10 @@ export default function Home() {
               {labels.intro}
             </p>
             <div data-motion-hero-item className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link href="/catalog" className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-semibold text-white shadow-[0_12px_34px_rgba(16,161,132,0.3)] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black">
+              <Link prefetch={false} href="/catalog" className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-semibold text-white shadow-[0_12px_34px_rgba(16,161,132,0.3)] transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                 {labels.shop} <ArrowRight className="size-4" />
               </Link>
-              <Link href="/admin" className="inline-flex h-11 cursor-pointer items-center justify-center gap-1 rounded-full px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+              <Link prefetch={false} href="/admin" className="inline-flex h-11 cursor-pointer items-center justify-center gap-1 rounded-full px-5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                 {labels.admin} <ChevronRight className="size-4" />
               </Link>
             </div>
@@ -80,7 +80,7 @@ export default function Home() {
               <p className="text-sm font-semibold text-brand">{labels.new}</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">{labels.popular}</h2>
             </div>
-            <Link href="/catalog" className="hidden cursor-pointer items-center gap-1 text-sm font-semibold text-brand hover:opacity-75 sm:flex">
+            <Link prefetch={false} href="/catalog" className="hidden cursor-pointer items-center gap-1 text-sm font-semibold text-brand hover:opacity-75 sm:flex">
               {labels.all} <ChevronRight className="size-4" />
             </Link>
           </div>
@@ -94,7 +94,7 @@ export default function Home() {
         <section id="categories" className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8 lg:pb-28">
           <div className="grid gap-4 lg:grid-cols-3">
             {storeCategories.slice(0, 3).map((category) => (
-              <Link key={category.value} href={`/catalog?category=${category.value}`} data-motion-card className="group relative min-h-80 cursor-pointer overflow-hidden rounded-[1.75rem] bg-[#0c1a17] p-7 text-white shadow-sm transition-shadow hover:shadow-[0_18px_55px_rgba(16,161,132,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+              <Link key={category.value} prefetch={false} href={`/catalog?category=${category.value}`} data-motion-card className="group relative min-h-80 cursor-pointer overflow-hidden rounded-[1.75rem] bg-[#0c1a17] p-7 text-white shadow-sm transition-shadow hover:shadow-[0_18px_55px_rgba(16,161,132,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                 <div className="relative z-10">
                   <p className="text-sm text-zinc-400">{labels.collection}</p>
                   <h3 className="mt-1 text-2xl font-semibold tracking-tight">{categoryCopy[locale][category.value].label}</h3>

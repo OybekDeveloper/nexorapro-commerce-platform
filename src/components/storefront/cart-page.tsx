@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -18,10 +19,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { useStore, type StoreLocale } from "@/components/storefront/store-provider";
-import {
-  LocationPicker,
-  type MapLocation,
-} from "@/components/maps/location-picker";
+import type { MapLocation } from "@/components/maps/location-picker";
 import { apiRequest } from "@/lib/api-client";
 import type { CommerceOrder, PaymentMethod } from "@/lib/commerce";
 import { formatStoreMoney } from "@/lib/storefront-data";
@@ -30,6 +28,24 @@ import {
   loadGsap,
   prefersCompactMotion,
 } from "@/lib/storefront-motion";
+
+const LocationPicker = dynamic(
+  () => import("@/components/maps/location-picker").then((module) => module.LocationPicker),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-48 items-center justify-center rounded-2xl bg-zinc-100 text-sm font-medium text-zinc-500">
+        Xarita yuklanmoqda...
+      </div>
+    ),
+  },
+);
+
+const FALLBACK_DELIVERY_POINT: MapLocation = {
+  latitude: 41.2995,
+  longitude: 69.2401,
+  address: "",
+};
 
 const copy = {
   UZ: { promoOk: "10% chegirma qo‘llandi.", promoBad: "Promo kod topilmadi. Demo kod: NEXORA10", accepted: "Buyurtma qabul qilindi", thanks: "Rahmat! Xarid muvaffaqiyatli yakunlandi.", orderNumber: "Buyurtma raqami", saved: "Buyurtma serverda saqlandi va admin panelida boshqariladi.", back: "Katalogga qaytish", orders: "Buyurtmalarim", empty: "Savatingiz hozircha bo‘sh.", emptyHint: "Katalogdan mahsulot tanlang. Qo‘shilgan mahsulotlar sahifalar orasida saqlanadi.", openCatalog: "Katalogni ochish", choice: "Sizning tanlovingiz", cart: "Savat", itemsDelivery: "ta mahsulot · Toshkent bo‘ylab bepul yetkazib berish", clearCart: "Savatni tozalash", remove: "savatdan olib tashlash", quantity: "Miqdor", decrease: "Miqdorni kamaytirish", increase: "Miqdorni oshirish", total: "Jami", perks: [["Bepul yetkazish", "Toshkent bo‘ylab"], ["Kafolat", "Tekshirilgan mahsulot"], ["Qulay qaytarish", "14 kun ichida"]], summary: "Buyurtma xulosasi", products: "Mahsulotlar", delivery: "Yetkazib berish", free: "Bepul", discount: "Promo chegirma", promo: "Promo kod", apply: "Qo‘llash", checkout: "Xaridni davom ettirish", login: "Email orqali kirish", accountRequired: "Xarid uchun akkaunt talab qilinadi." },
@@ -130,12 +146,14 @@ export function CartPageContent() {
             className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"
           >
             <Link
+              prefetch={false}
               href="/catalog"
               className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-brand px-6 text-sm font-semibold text-white"
             >
               {String(labels.back)}
             </Link>
             <Link
+              prefetch={false}
               href="/account"
               className="inline-flex h-12 cursor-pointer items-center justify-center rounded-full bg-zinc-100 px-6 text-sm font-semibold"
             >
@@ -176,6 +194,7 @@ export function CartPageContent() {
             {String(labels.emptyHint)}
           </p>
           <Link
+            prefetch={false}
             data-motion-hero-item
             href="/catalog"
             className="mt-7 inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-6 text-sm font-semibold text-white"
@@ -238,6 +257,7 @@ export function CartPageContent() {
                   className="grid gap-5 p-5 sm:grid-cols-[180px_minmax(0,1fr)] sm:p-7"
                 >
                   <Link
+                    prefetch={false}
                     href={`/product/${product.slug}`}
                     data-shared-product={product.slug}
                     data-shared-product-frame
@@ -258,6 +278,7 @@ export function CartPageContent() {
                           {product.category}
                         </p>
                         <Link
+                          prefetch={false}
                           href={`/product/${product.slug}`}
                           className="mt-1 block cursor-pointer text-xl font-semibold hover:text-brand"
                         >
@@ -406,6 +427,7 @@ export function CartPageContent() {
               </button>
             ) : (
               <Link
+                prefetch={false}
                 href="/login?next=/cart"
                 className="mt-6 inline-flex h-13 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(16,161,132,0.22)]"
               >
@@ -452,7 +474,9 @@ function CheckoutDialog({
 }) {
   const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [location, setLocation] = useState<MapLocation | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const [payment, setPayment] = useState<PaymentMethod>("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -461,7 +485,7 @@ function CheckoutDialog({
   const canSubmit =
     name.trim().length > 2 &&
     phone.trim().length >= 7 &&
-    Boolean(location?.address);
+    address.trim().length >= 6;
 
   useEffect(() => {
     const backdrop = backdropRef.current;
@@ -513,11 +537,19 @@ function CheckoutDialog({
         ref={dialogRef}
         onSubmit={async (event) => {
           event.preventDefault();
-          if (!canSubmit || !location) return;
+          if (!canSubmit) return;
           setSubmitting(true);
           setError(null);
           try {
-            await onComplete({ name, phone, location, payment });
+            await onComplete({
+              name: name.trim(),
+              phone: phone.trim(),
+              location: {
+                ...(location ?? FALLBACK_DELIVERY_POINT),
+                address: address.trim(),
+              },
+              payment,
+            });
           } catch (cause) {
             setError(
               cause instanceof Error ? cause.message : "Buyurtma yaratilmadi",
@@ -576,15 +608,32 @@ function CheckoutDialog({
                 </span>
               )}
             </div>
-            <LocationPicker
-              value={location}
-              onChange={setLocation}
-              height={280}
+            <textarea
+              required
+              rows={3}
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              placeholder="Masalan: Toshkent, Yunusobod, 5-mavze, 12-uy, 34-xonadon"
+              className="w-full rounded-xl border border-black/10 px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand"
             />
-            {location && (
-              <p className="mt-2 rounded-xl bg-brand/[0.06] px-3 py-2 text-sm font-medium text-zinc-700">
-                {location.address}
-              </p>
+            <button
+              type="button"
+              onClick={() => setMapOpen((value) => !value)}
+              className="mt-2 inline-flex h-10 cursor-pointer items-center justify-center rounded-xl bg-zinc-100 px-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              {mapOpen ? "Xaritani yopish" : "Xaritadan aniqlashtirish (ixtiyoriy)"}
+            </button>
+            {mapOpen && (
+              <div className="mt-3">
+                <LocationPicker
+                  value={location}
+                  onChange={(nextLocation) => {
+                    setLocation(nextLocation);
+                    if (nextLocation?.address) setAddress(nextLocation.address);
+                  }}
+                  height={240}
+                />
+              </div>
             )}
           </div>
           <fieldset>
@@ -614,8 +663,8 @@ function CheckoutDialog({
               <strong>{formatStoreMoney(total)}</strong>
             </div>
             <p className="mt-2 text-xs leading-5 text-zinc-500">
-              Manzil va koordinatalar order bilan saqlanadi. Portfolio rejimida
-              real pul yechilmaydi.
+              Manzil order bilan saqlanadi. Xaritadan nuqta tanlash ixtiyoriy.
+              Portfolio rejimida real pul yechilmaydi.
             </p>
           </div>
           {error && (
@@ -632,9 +681,7 @@ function CheckoutDialog({
           >
             {submitting
               ? "Buyurtma saqlanmoqda..."
-              : location
-                ? "Buyurtmani tasdiqlash"
-                : "Xaritadan manzil tanlang"}
+              : "Buyurtmani tasdiqlash"}
           </button>
         </div>
       </form>

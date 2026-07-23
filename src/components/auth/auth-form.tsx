@@ -74,6 +74,6 @@ export function AuthForm({ admin = false, next = "/", initialMode = "login" }: {
     {error && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
     <button type="submit" disabled={pending} className="inline-flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white shadow-[0_12px_28px_rgba(16,161,132,0.22)] disabled:cursor-not-allowed disabled:opacity-60">{pending ? "Tekshirilmoqda..." : admin ? "Admin panelga kirish" : mode === "login" ? "Kirish" : "Akkaunt yaratish"}<ArrowRight className="size-4" /></button>
     {!admin && <button type="button" onClick={() => { setMode((value) => value === "login" ? "register" : "login"); setError(null); }} className="w-full cursor-pointer text-center text-sm font-medium text-zinc-600 hover:text-brand">{mode === "login" ? "Akkauntingiz yo‘qmi? Ro‘yxatdan o‘ting" : "Akkauntingiz bormi? Kirish"}</button>}
-    {admin && <Link href="/" className="block text-center text-sm font-medium text-zinc-500 hover:text-brand">Do‘konga qaytish</Link>}
+    {admin && <Link prefetch={false} href="/" className="block text-center text-sm font-medium text-zinc-500 hover:text-brand">Do‘konga qaytish</Link>}
   </form>;
 }

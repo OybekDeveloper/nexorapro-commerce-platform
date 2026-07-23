@@ -39,7 +39,7 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
 
   return (
     <article data-motion-card className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-black/[0.05] bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[box-shadow,border-color] duration-200 hover:border-brand/25 hover:shadow-[0_18px_55px_rgba(16,161,132,0.1)] sm:p-5">
-      <Link href={`/product/${localizedProduct.slug}`} data-shared-product={localizedProduct.slug} data-shared-product-frame className="relative aspect-[1.55/1] cursor-pointer overflow-hidden rounded-3xl bg-[#f5f5f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+      <Link prefetch={false} href={`/product/${localizedProduct.slug}`} data-shared-product={localizedProduct.slug} data-shared-product-frame className="relative aspect-[1.55/1] cursor-pointer overflow-hidden rounded-3xl bg-[#f5f5f7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
         <Image
           src={localizedProduct.image}
           alt={localizedProduct.imageAlt}
@@ -58,14 +58,14 @@ export function ProductCard({ product, priority = false }: { product: StoreProdu
           <span className="font-semibold uppercase tracking-[0.15em] text-zinc-500">{localizedProduct.category}</span>
           <span className="inline-flex items-center gap-1 font-medium text-zinc-500"><Star className="size-3.5 fill-brand text-brand" />{localizedProduct.rating} ({localizedProduct.reviews})</span>
         </div>
-        <Link href={`/product/${localizedProduct.slug}`} className="mt-2 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+        <Link prefetch={false} href={`/product/${localizedProduct.slug}`} className="mt-2 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
           <h3 className="text-xl font-semibold tracking-[-0.025em] text-[#1d1d1f]">{localizedProduct.name}</h3>
         </Link>
         <p className="mt-2 min-h-10 text-sm leading-5 text-zinc-600">{localizedProduct.description}</p>
         <div className="mt-4 flex flex-wrap gap-1.5">{localizedProduct.specs.slice(0, 3).map((spec) => <span key={spec} className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">{spec}</span>)}</div>
         <div className="mt-auto flex items-end justify-between gap-4 border-t border-black/5 pt-5">
           <div><p className="text-xs text-zinc-500">{labels.price}</p><p className="mt-1 font-semibold text-brand">{formatStoreMoney(localizedProduct.price)}</p>{localizedProduct.compareAtPrice && <p className="mt-0.5 text-xs text-zinc-500 line-through">{formatStoreMoney(localizedProduct.compareAtPrice)}</p>}</div>
-          {hasVariants ? <Link href={`/product/${localizedProduct.slug}`} className="inline-flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-full bg-brand px-3 text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2" aria-label={`${localizedProduct.name}: ${labels.select}`}><ShoppingBag className="size-4" /></Link> : <button type="button" onClick={handleAdd} className={cn("inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-sm font-semibold text-white transition-[opacity,background-color,min-width] hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2", added && "min-w-[112px] bg-[#0c806a]")} aria-label={`${localizedProduct.name}: ${labels.add}`} aria-live="polite">
+          {hasVariants ? <Link prefetch={false} href={`/product/${localizedProduct.slug}`} className="inline-flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-full bg-brand px-3 text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2" aria-label={`${localizedProduct.name}: ${labels.select}`}><ShoppingBag className="size-4" /></Link> : <button type="button" onClick={handleAdd} className={cn("inline-flex h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand px-3 text-sm font-semibold text-white transition-[opacity,background-color,min-width] hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2", added && "min-w-[112px] bg-[#0c806a]")} aria-label={`${localizedProduct.name}: ${labels.add}`} aria-live="polite">
             {added ? <><Check className="size-4" /><span>{labels.added}</span></> : <ShoppingBag className="size-4" />}
           </button>}
         </div>

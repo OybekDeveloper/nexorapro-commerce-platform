@@ -147,12 +147,12 @@ export function StoreHeader() {
       <div className="bg-brand px-4 py-2 text-center text-[11px] font-semibold tracking-wide text-white sm:text-xs">{labels.announcement}</div>
       <header className="sticky top-0 z-50 border-b border-black/5 bg-white md:bg-white/88 md:backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex cursor-pointer items-center gap-2 rounded-lg text-lg font-semibold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <Link prefetch={false} href="/" className="flex cursor-pointer items-center gap-2 rounded-lg text-lg font-semibold tracking-[-0.04em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             <NexoraMark className="size-7 text-brand" />
             <span>nexorapro<span className="text-brand">.uz</span></span>
           </Link>
           <nav className="hidden items-center gap-7 text-sm font-medium text-zinc-600 md:flex" aria-label="Asosiy navigatsiya">
-            {navItems.map((item) => <Link key={item.href} href={item.href} onClick={() => { setSearchOpen(false); setLocaleOpen(false); }} className={cn("cursor-pointer rounded-md transition-colors hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand", pathname === item.href && "text-black")}>{item.label}</Link>)}
+            {navItems.map((item) => <Link key={item.href} prefetch={false} href={item.href} onClick={() => { setSearchOpen(false); setLocaleOpen(false); }} className={cn("cursor-pointer rounded-md transition-colors hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand", pathname === item.href && "text-black")}>{item.label}</Link>)}
           </nav>
           <div className="flex items-center gap-1">
             <div className="relative">
@@ -164,11 +164,11 @@ export function StoreHeader() {
             <button type="button" onClick={() => setSearchOpen(true)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" aria-label={labels.search}>
               <Search className="size-[18px]" />
             </button>
-            <Link ref={cartRef} href="/cart" className="relative inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" aria-label={`${labels.cart}: ${cartCount}`}>
+            <Link ref={cartRef} prefetch={false} href="/cart" className="relative inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand" aria-label={`${labels.cart}: ${cartCount}`}>
               <ShoppingBag className="size-[18px]" />
               {cartCount > 0 && <span data-cart-count className="absolute -right-0.5 -top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-5 text-white">{cartCount > 99 ? "99+" : cartCount}</span>}
             </Link>
-            <Link href={user ? "/account" : "/login"} className="hidden size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:inline-flex" aria-label={user ? user.name : labels.login}>
+            <Link prefetch={false} href={user ? "/account" : "/login"} className="hidden size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:inline-flex" aria-label={user ? user.name : labels.login}>
               <UserRound className="size-[18px]" />
             </Link>
             <button type="button" onClick={() => setMenuOpen(true)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden" aria-label={labels.menu}>
@@ -190,7 +190,7 @@ export function StoreHeader() {
             <div className="max-h-[55vh] overflow-y-auto p-3">
               {query.trim().length < 2 && <div className="px-3 py-8 text-center"><p className="font-medium">{labels.quick}</p><p className="mt-1 text-sm text-zinc-500">{labels.quickHint}</p></div>}
               {query.trim().length >= 2 && results.length === 0 && <div className="px-3 py-8 text-center"><p className="font-medium">{labels.empty}</p><p className="mt-1 text-sm text-zinc-500">{labels.emptyHint}</p></div>}
-              {results.map((product) => <Link key={product.id} href={`/product/${product.slug}`} onClick={() => setSearchOpen(false)} className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><div><p className="font-semibold">{product.name}</p><p className="mt-0.5 text-xs text-zinc-500">{product.category} · {product.specs.slice(0, 2).join(" · ")}</p></div><ArrowRight className="size-4 shrink-0 text-brand" /></Link>)}
+              {results.map((product) => <Link key={product.id} prefetch={false} href={`/product/${product.slug}`} onClick={() => setSearchOpen(false)} className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-3 py-3 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><div><p className="font-semibold">{product.name}</p><p className="mt-0.5 text-xs text-zinc-500">{product.category} · {product.specs.slice(0, 2).join(" · ")}</p></div><ArrowRight className="size-4 shrink-0 text-brand" /></Link>)}
               <button type="button" onClick={submitSearch} className="mt-2 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-semibold text-white transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><Search className="size-4" />{labels.all}</button>
             </div>
             <div className="hidden items-center justify-between border-t border-black/5 bg-zinc-50 px-5 py-3 text-xs text-zinc-500 sm:flex"><span>Enter — {labels.searchVerb}</span><span>⌘ K — {labels.open} · Esc — {labels.close}</span></div>
@@ -203,8 +203,8 @@ export function StoreHeader() {
           <button ref={menuBackdropRef} type="button" className="absolute inset-0 cursor-default bg-black/50" onClick={() => setMenuOpen(false)} aria-label={labels.closeMenu} />
           <aside ref={menuPanelRef} className="absolute right-0 top-0 flex h-full w-[min(88vw,360px)] flex-col bg-white p-5 shadow-2xl" aria-label="Mobil menyu">
             <div className="flex items-center justify-between"><span className="font-semibold">{labels.menu}</span><button type="button" onClick={() => setMenuOpen(false)} className="inline-flex size-10 cursor-pointer items-center justify-center rounded-full bg-zinc-100" aria-label={labels.closeMenu}><X className="size-5" /></button></div>
-            <nav className="mt-8 space-y-2">{navItems.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="flex h-14 cursor-pointer items-center justify-between rounded-2xl border border-black/5 px-4 text-lg font-semibold transition-colors hover:bg-zinc-100">{item.label}<ArrowRight className="size-4 text-brand" /></Link>)}</nav>
-            <div className="mt-auto space-y-2 border-t border-black/10 pt-5"><Link href="/cart" className="flex h-12 cursor-pointer items-center justify-between rounded-xl bg-brand px-4 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><ShoppingBag className="size-4" />{labels.cart}</span><span>{cartCount}</span></Link><Link href={user ? "/account" : "/login"} className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-semibold"><UserRound className="size-4" />{user ? user.name : labels.login}</Link><Link href="/admin" className="flex h-12 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold text-zinc-600"><UserRound className="size-4" />{labels.admin}</Link></div>
+            <nav className="mt-8 space-y-2">{navItems.map((item) => <Link key={item.href} prefetch={false} href={item.href} onClick={() => setMenuOpen(false)} className="flex h-14 cursor-pointer items-center justify-between rounded-2xl border border-black/5 px-4 text-lg font-semibold transition-colors hover:bg-zinc-100">{item.label}<ArrowRight className="size-4 text-brand" /></Link>)}</nav>
+            <div className="mt-auto space-y-2 border-t border-black/10 pt-5"><Link prefetch={false} href="/cart" className="flex h-12 cursor-pointer items-center justify-between rounded-xl bg-brand px-4 text-sm font-semibold text-white"><span className="inline-flex items-center gap-2"><ShoppingBag className="size-4" />{labels.cart}</span><span>{cartCount}</span></Link><Link prefetch={false} href={user ? "/account" : "/login"} className="flex h-12 cursor-pointer items-center gap-2 rounded-xl bg-zinc-100 px-4 text-sm font-semibold"><UserRound className="size-4" />{user ? user.name : labels.login}</Link><Link prefetch={false} href="/admin" className="flex h-12 cursor-pointer items-center gap-2 rounded-xl px-4 text-sm font-semibold text-zinc-600"><UserRound className="size-4" />{labels.admin}</Link></div>
           </aside>
         </div>
       )}
